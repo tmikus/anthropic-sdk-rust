@@ -39,6 +39,9 @@ futures = "0.3"
 # Bytes handling
 bytes = "1.0"
 
+# Optional JSON Schema support
+schemars = { version = "0.8", optional = true }
+
 [dev-dependencies]
 tokio = { version = "1.0", features = ["rt", "macros", "rt-multi-thread"] }
 tokio-test = "0.4"
@@ -47,3 +50,4 @@ env_logger = "0.10"
 [features]
 default = ["tokio"]
 tokio = ["dep:tokio"]
+schemars = ["dep:schemars"]

@@ -40,6 +40,7 @@ pub use client::{Client, RetryConfig, RequestMiddleware};
 pub use config::{ClientBuilder, Config};
 pub use error::Error;
 pub use streaming::{MessageStream, MessageAccumulator, StreamEvent, ContentDelta, MessageDelta, PartialMessage};
+pub use tools::{Tool, ToolBuilder};
 pub use types::{
     ChatRequest, ChatRequestBuilder, ContentBlock, ImageMediaType, ImageSource, Message,
     MessageParam, Model, Role, StopReason, Usage,
