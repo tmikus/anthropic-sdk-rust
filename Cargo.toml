@@ -1,0 +1,45 @@
+[package]
+name = "anthropic"
+version = "0.1.0"
+edition = "2021"
+authors = ["Anthropic SDK Team"]
+description = "Rust SDK for the Anthropic API"
+license = "MIT"
+repository = "https://github.com/anthropics/anthropic-sdk-rust"
+keywords = ["anthropic", "claude", "ai", "api", "sdk"]
+categories = ["api-bindings", "web-programming::http-client"]
+readme = "README.md"
+
+[dependencies]
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Async runtime
+tokio = { version = "1.0", features = ["rt", "macros"], optional = true }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+
+# URL handling
+url = { version = "2.0", features = ["serde"] }
+
+# Base64 encoding for images
+base64 = "0.22"
+
+# MIME type handling
+mime = "0.3"
+
+# Async utilities
+futures = "0.3"
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["rt", "macros", "rt-multi-thread"] }
+tokio-test = "0.4"
+
+[features]
+default = ["tokio"]
+tokio = ["dep:tokio"]
