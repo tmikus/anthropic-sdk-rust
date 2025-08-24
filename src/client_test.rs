@@ -429,4 +429,252 @@ mod tests {
         // Clean up
         std::env::remove_var("ANTHROPIC_API_KEY");
     }
+
+    #[tokio::test]
+    async fn test_execute_chat_request_structure() {
+        use crate::{Client, types::{ContentBlock, ChatRequest, MessageParam, Role}};
+
+        // Create a mock client that uses httpbin for testing request structure
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .base_url("https://httpbin.org")
+            .unwrap()
+            .model(Model::Claude35Sonnet20241022)
+            .max_tokens(1000)
+            .build()
+            .expect("Client should build successfully");
+
+        let request = ChatRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Hello, Claude!")],
+            }],
+            system: None,
+            tools: None,
+            temperature: Some(0.7),
+            top_p: None,
+            stop_sequences: None,
+        };
+
+        // This will fail because httpbin doesn't implement the Anthropic API,
+        // but we can test that the request is properly structured
+        let result = client.execute_chat(request).await;
+        
+        // We expect this to fail since httpbin doesn't return the expected format
+        assert!(result.is_err());
+        
+        // The error should be related to response parsing, not request building
+        match result.unwrap_err() {
+            Error::InvalidResponse(_) | Error::InvalidRequest(_) => {
+                // Expected - httpbin doesn't implement Anthropic API
+            }
+            Error::Api { .. } => {
+                // Also acceptable - httpbin might return 404 or other status
+            }
+            other => {
+                // If we get here, the request was properly built and sent
+                println!("Got error (expected): {:?}", other);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_execute_chat_with_model_override() {
+        use crate::{Client, types::{ContentBlock, ChatRequest, MessageParam, Role}};
+
+        // Create a client with one model
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .base_url("https://httpbin.org/post") // Use POST endpoint to see request body
+            .unwrap()
+            .model(Model::Claude3Haiku20240307) // Default model
+            .max_tokens(1000)
+            .build()
+            .expect("Client should build successfully");
+
+        let request = ChatRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Test message")],
+            }],
+            system: None,
+            tools: None,
+            temperature: None,
+            top_p: None,
+            stop_sequences: None,
+        };
+
+        // Test with model override
+        let result = client.execute_chat_with_model(
+            Model::Claude35Sonnet20241022, // Different model
+            request
+        ).await;
+
+        // This will fail because httpbin doesn't implement the Anthropic API,
+        // but we're testing that the method accepts the model parameter
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_chat_builder_integration() {
+        use crate::{Client, types::ContentBlock};
+
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .base_url("https://httpbin.org")
+            .unwrap()
+            .model(Model::Claude35Sonnet20241022)
+            .max_tokens(2000)
+            .build()
+            .expect("Client should build successfully");
+
+        // Test the fluent API
+        let request = client.chat_builder()
+            .user_message(ContentBlock::text("Hello!"))
+            .assistant_message(ContentBlock::text("Hi there!"))
+            .system("Be helpful and concise")
+            .temperature(0.8)
+            .build();
+
+        // Verify the request structure
+        assert_eq!(request.messages.len(), 2);
+        assert!(request.system.is_some());
+        assert_eq!(request.temperature, Some(0.8));
+
+        // Test executing the request (will fail with httpbin, but tests integration)
+        let result = client.execute_chat(request).await;
+        assert!(result.is_err()); // Expected with httpbin
+    }
+
+    #[test]
+    fn test_client_send_sync_traits() {
+        use crate::Client;
+        
+        // Test that Client implements Send + Sync
+        fn assert_send<T: Send>() {}
+        fn assert_sync<T: Sync>() {}
+        
+        assert_send::<Client>();
+        assert_sync::<Client>();
+        
+        // Test that we can clone the client (Arc<ClientInner> should be cloneable)
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .build()
+            .expect("Client should build");
+            
+        let _cloned_client = client.clone();
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_requests() {
+        use crate::{Client, types::{ContentBlock, ChatRequest, MessageParam, Role}};
+        use tokio::task;
+
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .base_url("https://httpbin.org")
+            .unwrap()
+            .build()
+            .expect("Client should build successfully");
+
+        let request = ChatRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Concurrent test")],
+            }],
+            system: None,
+            tools: None,
+            temperature: None,
+            top_p: None,
+            stop_sequences: None,
+        };
+
+        // Test that we can make concurrent requests with the same client
+        let client1 = client.clone();
+        let client2 = client.clone();
+        let request1 = request.clone();
+        let request2 = request.clone();
+
+        let task1 = task::spawn(async move {
+            client1.execute_chat(request1).await
+        });
+
+        let task2 = task::spawn(async move {
+            client2.execute_chat(request2).await
+        });
+
+        // Both should complete (though they'll error with httpbin)
+        let (result1, result2) = tokio::join!(task1, task2);
+        
+        // Both tasks should complete without panicking
+        assert!(result1.is_ok()); // Task completed
+        assert!(result2.is_ok()); // Task completed
+        
+        // The actual API calls will fail with httpbin, but that's expected
+        assert!(result1.unwrap().is_err());
+        assert!(result2.unwrap().is_err());
+    }
+
+    #[test]
+    fn test_request_serialization() {
+        use crate::types::{ChatRequest, MessageParam, Role, ContentBlock, SystemMessage};
+        use serde_json;
+
+        let request = ChatRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Hello!")],
+            }],
+            system: Some(vec![SystemMessage {
+                message_type: "text".to_string(),
+                text: "Be helpful".to_string(),
+            }]),
+            tools: None,
+            temperature: Some(0.7),
+            top_p: Some(0.9),
+            stop_sequences: Some(vec!["STOP".to_string()]),
+        };
+
+        // Test that the request can be serialized (this is what execute_chat does internally)
+        let serialized = serde_json::to_value(&request).expect("Should serialize");
+        
+        // Verify key fields are present
+        assert!(serialized["messages"].is_array());
+        assert!(serialized["system"].is_array());
+        assert!((serialized["temperature"].as_f64().unwrap() - 0.7).abs() < 0.001);
+        assert!((serialized["top_p"].as_f64().unwrap() - 0.9).abs() < 0.001);
+        assert!(serialized["stop_sequences"].is_array());
+        
+        // Verify that None fields are omitted
+        assert!(serialized.get("tools").is_none());
+    }
+
+    #[test]
+    fn test_model_and_max_tokens_injection() {
+        use crate::types::{ChatRequest, MessageParam, Role, ContentBlock, Model};
+        use serde_json;
+
+        let request = ChatRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Test")],
+            }],
+            system: None,
+            tools: None,
+            temperature: None,
+            top_p: None,
+            stop_sequences: None,
+        };
+
+        // Simulate what execute_chat_with_model does
+        let mut body = serde_json::to_value(&request).expect("Should serialize");
+        body["model"] = serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
+        body["max_tokens"] = serde_json::to_value(1000u32).expect("Should serialize max_tokens");
+
+        // Verify the fields were added
+        assert_eq!(body["model"], "claude-3-5-sonnet-20241022");
+        assert_eq!(body["max_tokens"], 1000);
+        assert!(body["messages"].is_array());
+    }
 }

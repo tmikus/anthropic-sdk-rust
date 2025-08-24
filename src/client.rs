@@ -316,7 +316,7 @@ impl Client {
 
     /// Execute a chat request using the client's configured model and max_tokens
     pub async fn execute_chat(&self, request: ChatRequest) -> Result<Message> {
-        todo!("Implementation will be added in task 8")
+        self.execute_chat_with_model(self.inner.config.model.clone(), request).await
     }
 
     /// Execute a chat request with a specific model override
@@ -325,7 +325,19 @@ impl Client {
         model: Model,
         request: ChatRequest,
     ) -> Result<Message> {
-        todo!("Implementation will be added in task 8")
+        // Create the request body with model and max_tokens
+        let mut body = serde_json::to_value(&request)?;
+        
+        // Add model and max_tokens to the request
+        body["model"] = serde_json::to_value(&model)?;
+        body["max_tokens"] = serde_json::to_value(self.inner.config.max_tokens)?;
+        
+        // Execute the request
+        self.inner.execute_request(
+            reqwest::Method::POST,
+            "/v1/messages",
+            Some(body),
+        ).await
     }
 
     /// Stream a chat request using the client's configured model and max_tokens
