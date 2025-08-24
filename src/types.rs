@@ -384,6 +384,18 @@ pub struct CountTokensRequest {
     pub tools: Option<Vec<crate::tools::Tool>>,
 }
 
+impl From<ChatRequest> for CountTokensRequest {
+    /// Convert a ChatRequest to a CountTokensRequest
+    /// This is useful for counting tokens in a message before sending it
+    fn from(chat_request: ChatRequest) -> Self {
+        Self {
+            messages: chat_request.messages,
+            system: chat_request.system,
+            tools: chat_request.tools,
+        }
+    }
+}
+
 /// Token count response
 #[derive(Debug, Clone, Deserialize)]
 pub struct TokenCount {
@@ -750,6 +762,44 @@ mod tests {
         assert_eq!(parsed["messages"][0]["content"][0]["text"], "Count my tokens!");
         assert!(parsed.get("system").is_none());
         assert!(parsed.get("tools").is_none());
+    }
+
+    #[test]
+    fn test_count_tokens_request_from_chat_request() {
+        let chat_request = ChatRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Convert me!")],
+            }],
+            system: Some(vec![SystemMessage {
+                message_type: "text".to_string(),
+                text: "System message".to_string(),
+            }]),
+            tools: None,
+            temperature: Some(0.7),
+            top_p: Some(0.9),
+            stop_sequences: Some(vec!["STOP".to_string()]),
+        };
+
+        // Test From trait implementation
+        let count_request = CountTokensRequest::from(chat_request.clone());
+        
+        assert_eq!(count_request.messages.len(), 1);
+        assert_eq!(count_request.messages[0].role, Role::User);
+        assert!(count_request.system.is_some());
+        assert_eq!(count_request.system.as_ref().unwrap()[0].text, "System message");
+        assert!(count_request.tools.is_none());
+
+        // Test that temperature, top_p, and stop_sequences are not included
+        let serialized = serde_json::to_value(&count_request).unwrap();
+        assert!(serialized.get("temperature").is_none());
+        assert!(serialized.get("top_p").is_none());
+        assert!(serialized.get("stop_sequences").is_none());
+
+        // Test using into() syntax
+        let count_request2: CountTokensRequest = chat_request.into();
+        assert_eq!(count_request2.messages.len(), 1);
+        assert!(count_request2.system.is_some());
     }
 
     #[test]

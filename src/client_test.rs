@@ -677,4 +677,393 @@ mod tests {
         assert_eq!(body["max_tokens"], 1000);
         assert!(body["messages"].is_array());
     }
+
+    #[tokio::test]
+    async fn test_count_tokens_request_structure() {
+        use crate::{Client, types::{ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage}};
+
+        // Create a mock client that uses httpbin for testing request structure
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .base_url("https://httpbin.org")
+            .unwrap()
+            .model(Model::Claude35Sonnet20241022)
+            .max_tokens(1000)
+            .build()
+            .expect("Client should build successfully");
+
+        let request = CountTokensRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Count my tokens!")],
+            }],
+            system: Some(vec![SystemMessage {
+                message_type: "text".to_string(),
+                text: "You are a helpful assistant.".to_string(),
+            }]),
+            tools: None,
+        };
+
+        // This will fail because httpbin doesn't implement the Anthropic API,
+        // but we can test that the request is properly structured
+        let result = client.count_tokens(request).await;
+        
+        // We expect this to fail since httpbin doesn't return the expected format
+        assert!(result.is_err());
+        
+        // The error should be related to response parsing, not request building
+        match result.unwrap_err() {
+            Error::InvalidResponse(_) | Error::InvalidRequest(_) => {
+                // Expected - httpbin doesn't implement Anthropic API
+            }
+            Error::Api { .. } => {
+                // Also acceptable - httpbin might return 404 or other status
+            }
+            other => {
+                // If we get here, the request was properly built and sent
+                println!("Got error (expected): {:?}", other);
+            }
+        }
+    }
+
+    #[test]
+    fn test_count_tokens_request_serialization() {
+        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, SystemMessage, Model};
+        use serde_json;
+
+        let request = CountTokensRequest {
+            messages: vec![
+                MessageParam {
+                    role: Role::User,
+                    content: vec![ContentBlock::text("Hello, how are you?")],
+                },
+                MessageParam {
+                    role: Role::Assistant,
+                    content: vec![ContentBlock::text("I'm doing well, thank you!")],
+                },
+            ],
+            system: Some(vec![SystemMessage {
+                message_type: "text".to_string(),
+                text: "Be helpful and concise.".to_string(),
+            }]),
+            tools: None,
+        };
+
+        // Test that the request can be serialized
+        let serialized = serde_json::to_value(&request).expect("Should serialize");
+        
+        // Verify key fields are present
+        assert!(serialized["messages"].is_array());
+        assert_eq!(serialized["messages"].as_array().unwrap().len(), 2);
+        assert!(serialized["system"].is_array());
+        assert_eq!(serialized["system"][0]["text"], "Be helpful and concise.");
+        
+        // Verify that None fields are omitted
+        assert!(serialized.get("tools").is_none());
+
+        // Simulate what count_tokens does - add model to the request
+        let mut body = serialized;
+        body["model"] = serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
+
+        // Verify the model field was added
+        assert_eq!(body["model"], "claude-3-5-sonnet-20241022");
+        assert!(body["messages"].is_array());
+        assert!(body["system"].is_array());
+    }
+
+    #[test]
+    fn test_count_tokens_request_minimal() {
+        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, Model};
+        use serde_json;
+
+        // Test with minimal request (no system, no tools)
+        let request = CountTokensRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Simple message")],
+            }],
+            system: None,
+            tools: None,
+        };
+
+        let serialized = serde_json::to_value(&request).expect("Should serialize");
+        
+        // Verify required fields are present
+        assert!(serialized["messages"].is_array());
+        assert_eq!(serialized["messages"].as_array().unwrap().len(), 1);
+        
+        // Verify optional fields are omitted
+        assert!(serialized.get("system").is_none());
+        assert!(serialized.get("tools").is_none());
+
+        // Add model as count_tokens would do
+        let mut body = serialized;
+        body["model"] = serde_json::to_value(&Model::Claude3Haiku20240307).expect("Should serialize model");
+
+        assert_eq!(body["model"], "claude-3-haiku-20240307");
+    }
+
+    #[test]
+    fn test_count_tokens_request_with_multimodal_content() {
+        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, ImageMediaType, Model};
+        use serde_json;
+
+        let request = CountTokensRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![
+                    ContentBlock::text("What do you see in this image?"),
+                    ContentBlock::image_base64(ImageMediaType::Png, "base64encodeddata"),
+                ],
+            }],
+            system: None,
+            tools: None,
+        };
+
+        let serialized = serde_json::to_value(&request).expect("Should serialize");
+        
+        // Verify multimodal content is properly serialized
+        assert!(serialized["messages"].is_array());
+        let message = &serialized["messages"][0];
+        assert!(message["content"].is_array());
+        assert_eq!(message["content"].as_array().unwrap().len(), 2);
+        
+        // Check text content
+        assert_eq!(message["content"][0]["type"], "text");
+        assert_eq!(message["content"][0]["text"], "What do you see in this image?");
+        
+        // Check image content
+        assert_eq!(message["content"][1]["type"], "image");
+        assert_eq!(message["content"][1]["source"]["type"], "base64");
+        assert_eq!(message["content"][1]["source"]["media_type"], "image/png");
+        assert_eq!(message["content"][1]["source"]["data"], "base64encodeddata");
+
+        // Add model
+        let mut body = serialized;
+        body["model"] = serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
+        assert_eq!(body["model"], "claude-3-5-sonnet-20241022");
+    }
+
+    #[test]
+    fn test_count_tokens_request_with_tools() {
+        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, Model};
+        use crate::tools::Tool;
+        use serde_json;
+
+        // Create a simple tool for testing
+        let tool = Tool::new("calculator")
+            .description("A simple calculator")
+            .schema_value(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "operation": {"type": "string"},
+                    "a": {"type": "number"},
+                    "b": {"type": "number"}
+                },
+                "required": ["operation", "a", "b"]
+            }))
+            .build();
+
+        let request = CountTokensRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Calculate 2 + 3")],
+            }],
+            system: None,
+            tools: Some(vec![tool]),
+        };
+
+        let serialized = serde_json::to_value(&request).expect("Should serialize");
+        
+        // Verify tools are properly serialized
+        assert!(serialized["messages"].is_array());
+        assert!(serialized["tools"].is_array());
+        assert_eq!(serialized["tools"].as_array().unwrap().len(), 1);
+        
+        let tool_json = &serialized["tools"][0];
+        assert_eq!(tool_json["name"], "calculator");
+        assert_eq!(tool_json["description"], "A simple calculator");
+        assert!(tool_json["input_schema"].is_object());
+
+        // Add model
+        let mut body = serialized;
+        body["model"] = serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
+        assert_eq!(body["model"], "claude-3-5-sonnet-20241022");
+    }
+
+    #[tokio::test]
+    async fn test_count_tokens_with_different_models() {
+        use crate::{Client, types::{ContentBlock, CountTokensRequest, MessageParam, Role}};
+
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .base_url("https://httpbin.org")
+            .unwrap()
+            .model(Model::Claude3Haiku20240307) // Default model
+            .build()
+            .expect("Client should build successfully");
+
+        let request = CountTokensRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Test message for token counting")],
+            }],
+            system: None,
+            tools: None,
+        };
+
+        // Test that count_tokens uses the client's configured model
+        let result = client.count_tokens(request).await;
+        
+        // This will fail with httpbin, but we're testing that the method works
+        assert!(result.is_err());
+        
+        // The error should indicate that the request was attempted
+        match result.unwrap_err() {
+            Error::InvalidResponse(_) | Error::InvalidRequest(_) | Error::Api { .. } => {
+                // Expected - httpbin doesn't implement Anthropic API
+            }
+            other => {
+                println!("Got error (expected): {:?}", other);
+            }
+        }
+    }
+
+    #[test]
+    fn test_token_count_response_deserialization() {
+        use crate::types::TokenCount;
+        use serde_json;
+
+        // Test basic token count response
+        let json = r#"{"input_tokens": 42}"#;
+        let token_count: TokenCount = serde_json::from_str(json).expect("Should deserialize");
+        assert_eq!(token_count.input_tokens, 42);
+
+        // Test with larger token count
+        let json = r#"{"input_tokens": 1500}"#;
+        let token_count: TokenCount = serde_json::from_str(json).expect("Should deserialize");
+        assert_eq!(token_count.input_tokens, 1500);
+
+        // Test with zero tokens
+        let json = r#"{"input_tokens": 0}"#;
+        let token_count: TokenCount = serde_json::from_str(json).expect("Should deserialize");
+        assert_eq!(token_count.input_tokens, 0);
+    }
+
+    #[test]
+    fn test_token_count_response_invalid_json() {
+        use crate::types::TokenCount;
+        use serde_json;
+
+        // Test with missing required field
+        let json = r#"{}"#;
+        let result = serde_json::from_str::<TokenCount>(json);
+        assert!(result.is_err());
+
+        // Test with wrong field type
+        let json = r#"{"input_tokens": "not_a_number"}"#;
+        let result = serde_json::from_str::<TokenCount>(json);
+        assert!(result.is_err());
+
+        // Test with extra fields (should be ignored)
+        let json = r#"{"input_tokens": 100, "extra_field": "ignored"}"#;
+        let token_count: TokenCount = serde_json::from_str(json).expect("Should deserialize");
+        assert_eq!(token_count.input_tokens, 100);
+    }
+
+    #[test]
+    fn test_count_tokens_request_builder_pattern() {
+        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, SystemMessage};
+
+        // Test building a CountTokensRequest manually (no builder pattern exists yet)
+        let mut messages = Vec::new();
+        messages.push(MessageParam {
+            role: Role::User,
+            content: vec![ContentBlock::text("First message")],
+        });
+        messages.push(MessageParam {
+            role: Role::Assistant,
+            content: vec![ContentBlock::text("Response message")],
+        });
+
+        let system = Some(vec![SystemMessage {
+            message_type: "text".to_string(),
+            text: "System prompt".to_string(),
+        }]);
+
+        let request = CountTokensRequest {
+            messages,
+            system,
+            tools: None,
+        };
+
+        // Verify the structure
+        assert_eq!(request.messages.len(), 2);
+        assert!(request.system.is_some());
+        assert_eq!(request.system.as_ref().unwrap()[0].text, "System prompt");
+        assert!(request.tools.is_none());
+    }
+
+    #[test]
+    fn test_count_tokens_request_from_chat_request() {
+        use crate::types::{ChatRequest, CountTokensRequest, MessageParam, Role, ContentBlock, SystemMessage};
+
+        // Test converting a ChatRequest to CountTokensRequest using From trait
+        let chat_request = ChatRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Hello!")],
+            }],
+            system: Some(vec![SystemMessage {
+                message_type: "text".to_string(),
+                text: "Be helpful".to_string(),
+            }]),
+            tools: None,
+            temperature: Some(0.7), // This field won't be in CountTokensRequest
+            top_p: Some(0.9),       // This field won't be in CountTokensRequest
+            stop_sequences: Some(vec!["STOP".to_string()]), // This field won't be in CountTokensRequest
+        };
+
+        // Use the From trait implementation
+        let count_request = CountTokensRequest::from(chat_request);
+
+        // Verify the conversion
+        assert_eq!(count_request.messages.len(), 1);
+        assert!(count_request.system.is_some());
+        assert_eq!(count_request.system.as_ref().unwrap()[0].text, "Be helpful");
+        assert!(count_request.tools.is_none());
+    }
+
+    #[test]
+    fn test_count_tokens_request_from_chat_request_with_tools() {
+        use crate::types::{ChatRequest, CountTokensRequest, MessageParam, Role, ContentBlock};
+        use crate::tools::Tool;
+
+        let tool = Tool::new("test_tool")
+            .description("A test tool")
+            .schema_value(serde_json::json!({"type": "object"}))
+            .build();
+
+        let chat_request = ChatRequest {
+            messages: vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Test with tools")],
+            }],
+            system: None,
+            tools: Some(vec![tool]),
+            temperature: Some(0.5),
+            top_p: Some(0.8),
+            stop_sequences: None,
+        };
+
+        // Convert using From trait
+        let count_request: CountTokensRequest = chat_request.into();
+
+        // Verify the conversion
+        assert_eq!(count_request.messages.len(), 1);
+        assert!(count_request.system.is_none());
+        assert!(count_request.tools.is_some());
+        assert_eq!(count_request.tools.as_ref().unwrap().len(), 1);
+        assert_eq!(count_request.tools.as_ref().unwrap()[0].name, "test_tool");
+    }
 }

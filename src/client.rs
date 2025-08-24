@@ -501,8 +501,19 @@ impl Client {
     }
 
     /// Count tokens in a request
-    pub async fn count_tokens(&self, _request: CountTokensRequest) -> Result<TokenCount> {
-        todo!("Implementation will be added in task 12")
+    pub async fn count_tokens(&self, request: CountTokensRequest) -> Result<TokenCount> {
+        // Create the request body with model
+        let mut body = serde_json::to_value(&request)?;
+        
+        // Add model to the request
+        body["model"] = serde_json::to_value(&self.inner.config.model)?;
+        
+        // Execute the request
+        self.inner.execute_request(
+            reqwest::Method::POST,
+            "/v1/messages/count_tokens",
+            Some(body),
+        ).await
     }
 
     /// Create a new chat request builder
