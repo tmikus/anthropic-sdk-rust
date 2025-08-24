@@ -351,6 +351,16 @@ impl Client {
     pub fn chat_builder(&self) -> ChatRequestBuilder {
         ChatRequestBuilder::new()
     }
+
+    /// Get the client's default model
+    pub fn default_model(&self) -> Model {
+        self.inner.config.model.clone()
+    }
+
+    /// Get the client's default max_tokens
+    pub fn default_max_tokens(&self) -> u32 {
+        self.inner.config.max_tokens
+    }
 }
 
 /// Extract request ID from response headers

@@ -353,4 +353,80 @@ mod tests {
         let duration = extract_retry_after_duration(no_retry_after);
         assert_eq!(duration, None);
     }
+
+    #[test]
+    fn test_client_chat_builder_integration() {
+        use crate::{Client, types::{ContentBlock, Role}};
+
+        // Create a client with specific model and max_tokens
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .model(Model::Claude3Haiku20240307)
+            .max_tokens(2000)
+            .build()
+            .expect("Client should build successfully");
+
+        // Test that client provides access to default configuration
+        assert_eq!(client.default_model(), Model::Claude3Haiku20240307);
+        assert_eq!(client.default_max_tokens(), 2000);
+
+        // Test that chat_builder works
+        let builder = client.chat_builder();
+        let request = builder
+            .user_message(ContentBlock::text("Hello!"))
+            .build();
+
+        assert_eq!(request.messages.len(), 1);
+        assert_eq!(request.messages[0].role, Role::User);
+        match &request.messages[0].content[0] {
+            ContentBlock::Text { text, .. } => assert_eq!(text, "Hello!"),
+            _ => panic!("Expected text content block"),
+        }
+    }
+
+    #[test]
+    fn test_client_default_configuration() {
+        use crate::Client;
+
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .build()
+            .expect("Client should build with defaults");
+
+        // Test default values
+        assert_eq!(client.default_model(), Model::Claude35Sonnet20241022);
+        assert_eq!(client.default_max_tokens(), 4096);
+    }
+
+    #[test]
+    fn test_client_custom_configuration() {
+        use crate::Client;
+
+        let client = Client::builder()
+            .api_key("sk-ant-api03-test-key")
+            .model(Model::Claude3Opus20240229)
+            .max_tokens(8192)
+            .build()
+            .expect("Client should build with custom config");
+
+        assert_eq!(client.default_model(), Model::Claude3Opus20240229);
+        assert_eq!(client.default_max_tokens(), 8192);
+    }
+
+    #[test]
+    fn test_client_new_convenience_method() {
+        use crate::Client;
+
+        // Set environment variable for the test
+        std::env::set_var("ANTHROPIC_API_KEY", "sk-ant-api03-test-key");
+
+        let client = Client::new(Model::Claude3Haiku20240307)
+            .expect("Client::new should work with env var");
+
+        assert_eq!(client.default_model(), Model::Claude3Haiku20240307);
+        assert_eq!(client.default_max_tokens(), 4096); // Default max_tokens
+
+        // Clean up
+        std::env::remove_var("ANTHROPIC_API_KEY");
+    }
 }

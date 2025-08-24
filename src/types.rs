@@ -289,6 +289,18 @@ impl ChatRequestBuilder {
         self
     }
 
+    /// Add a message with specified role and multiple content blocks
+    pub fn message_with_content(mut self, role: Role, content: Vec<ContentBlock>) -> Self {
+        self.messages.push(MessageParam { role, content });
+        self
+    }
+
+    /// Add multiple messages at once
+    pub fn messages(mut self, messages: Vec<MessageParam>) -> Self {
+        self.messages.extend(messages);
+        self
+    }
+
     /// Add a user message
     pub fn user_message(self, content: ContentBlock) -> Self {
         self.message(Role::User, content)
@@ -332,6 +344,20 @@ impl ChatRequestBuilder {
         self.stop_sequences
             .get_or_insert_with(Vec::new)
             .push(sequence.into());
+        self
+    }
+
+    /// Add multiple stop sequences
+    pub fn stop_sequences(mut self, sequences: Vec<String>) -> Self {
+        self.stop_sequences
+            .get_or_insert_with(Vec::new)
+            .extend(sequences);
+        self
+    }
+
+    /// Add multiple tools
+    pub fn tools(mut self, tools: Vec<crate::tools::Tool>) -> Self {
+        self.tools.get_or_insert_with(Vec::new).extend(tools);
         self
     }
 
@@ -827,7 +853,7 @@ mod tests {
     }
 
     #[test]
-    fn test_chat_request_builder() {
+    fn test_chat_request_builder_basic() {
         let request = ChatRequestBuilder::new()
             .user_message(ContentBlock::text("Hello!"))
             .assistant_message(ContentBlock::text("Hi there!"))
@@ -845,6 +871,275 @@ mod tests {
         assert_eq!(request.temperature, Some(0.8));
         assert_eq!(request.top_p, Some(0.9));
         assert_eq!(request.stop_sequences.as_ref().unwrap()[0], "STOP");
+    }
+
+    #[test]
+    fn test_chat_request_builder_empty() {
+        let request = ChatRequestBuilder::new().build();
+
+        assert_eq!(request.messages.len(), 0);
+        assert!(request.system.is_none());
+        assert!(request.tools.is_none());
+        assert!(request.temperature.is_none());
+        assert!(request.top_p.is_none());
+        assert!(request.stop_sequences.is_none());
+    }
+
+    #[test]
+    fn test_chat_request_builder_message_with_content() {
+        let content_blocks = vec![
+            ContentBlock::text("Hello!"),
+            ContentBlock::image_base64(ImageMediaType::Png, "base64data"),
+        ];
+
+        let request = ChatRequestBuilder::new()
+            .message_with_content(Role::User, content_blocks.clone())
+            .build();
+
+        assert_eq!(request.messages.len(), 1);
+        assert_eq!(request.messages[0].role, Role::User);
+        assert_eq!(request.messages[0].content.len(), 2);
+        
+        match &request.messages[0].content[0] {
+            ContentBlock::Text { text, .. } => assert_eq!(text, "Hello!"),
+            _ => panic!("Expected text content block"),
+        }
+        
+        match &request.messages[0].content[1] {
+            ContentBlock::Image { .. } => {},
+            _ => panic!("Expected image content block"),
+        }
+    }
+
+    #[test]
+    fn test_chat_request_builder_multiple_messages() {
+        let messages = vec![
+            MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("First message")],
+            },
+            MessageParam {
+                role: Role::Assistant,
+                content: vec![ContentBlock::text("Second message")],
+            },
+        ];
+
+        let request = ChatRequestBuilder::new()
+            .messages(messages.clone())
+            .user_message(ContentBlock::text("Third message"))
+            .build();
+
+        assert_eq!(request.messages.len(), 3);
+        assert_eq!(request.messages[0].role, Role::User);
+        assert_eq!(request.messages[1].role, Role::Assistant);
+        assert_eq!(request.messages[2].role, Role::User);
+        
+        match &request.messages[0].content[0] {
+            ContentBlock::Text { text, .. } => assert_eq!(text, "First message"),
+            _ => panic!("Expected text content block"),
+        }
+        
+        match &request.messages[2].content[0] {
+            ContentBlock::Text { text, .. } => assert_eq!(text, "Third message"),
+            _ => panic!("Expected text content block"),
+        }
+    }
+
+    #[test]
+    fn test_chat_request_builder_multiple_system_messages() {
+        let request = ChatRequestBuilder::new()
+            .system("First system message")
+            .system("Second system message")
+            .user_message(ContentBlock::text("Hello!"))
+            .build();
+
+        assert_eq!(request.messages.len(), 1);
+        assert!(request.system.is_some());
+        assert_eq!(request.system.as_ref().unwrap().len(), 2);
+        assert_eq!(request.system.as_ref().unwrap()[0].text, "First system message");
+        assert_eq!(request.system.as_ref().unwrap()[1].text, "Second system message");
+    }
+
+    #[test]
+    fn test_chat_request_builder_multiple_tools() {
+        use crate::tools::Tool;
+        
+        let tool1 = Tool::new("calculator").description("A calculator tool").build();
+        let tool2 = Tool::new("weather").description("A weather tool").build();
+        let tool3 = Tool::new("search").build();
+
+        let request = ChatRequestBuilder::new()
+            .tool(tool1.clone())
+            .tool(tool2.clone())
+            .tools(vec![tool3.clone()])
+            .user_message(ContentBlock::text("Hello!"))
+            .build();
+
+        assert_eq!(request.messages.len(), 1);
+        assert!(request.tools.is_some());
+        assert_eq!(request.tools.as_ref().unwrap().len(), 3);
+        assert_eq!(request.tools.as_ref().unwrap()[0].name, "calculator");
+        assert_eq!(request.tools.as_ref().unwrap()[1].name, "weather");
+        assert_eq!(request.tools.as_ref().unwrap()[2].name, "search");
+    }
+
+    #[test]
+    fn test_chat_request_builder_multiple_stop_sequences() {
+        let request = ChatRequestBuilder::new()
+            .stop_sequence("STOP")
+            .stop_sequence("END")
+            .stop_sequences(vec!["HALT".to_string(), "QUIT".to_string()])
+            .user_message(ContentBlock::text("Hello!"))
+            .build();
+
+        assert_eq!(request.messages.len(), 1);
+        assert!(request.stop_sequences.is_some());
+        assert_eq!(request.stop_sequences.as_ref().unwrap().len(), 4);
+        assert_eq!(request.stop_sequences.as_ref().unwrap()[0], "STOP");
+        assert_eq!(request.stop_sequences.as_ref().unwrap()[1], "END");
+        assert_eq!(request.stop_sequences.as_ref().unwrap()[2], "HALT");
+        assert_eq!(request.stop_sequences.as_ref().unwrap()[3], "QUIT");
+    }
+
+    #[test]
+    fn test_chat_request_builder_parameter_validation() {
+        // Test temperature bounds (should be between 0.0 and 1.0 in practice, but we don't enforce this in the builder)
+        let request = ChatRequestBuilder::new()
+            .temperature(0.0)
+            .user_message(ContentBlock::text("Hello!"))
+            .build();
+        assert_eq!(request.temperature, Some(0.0));
+
+        let request = ChatRequestBuilder::new()
+            .temperature(1.0)
+            .user_message(ContentBlock::text("Hello!"))
+            .build();
+        assert_eq!(request.temperature, Some(1.0));
+
+        // Test top_p bounds (should be between 0.0 and 1.0 in practice, but we don't enforce this in the builder)
+        let request = ChatRequestBuilder::new()
+            .top_p(0.0)
+            .user_message(ContentBlock::text("Hello!"))
+            .build();
+        assert_eq!(request.top_p, Some(0.0));
+
+        let request = ChatRequestBuilder::new()
+            .top_p(1.0)
+            .user_message(ContentBlock::text("Hello!"))
+            .build();
+        assert_eq!(request.top_p, Some(1.0));
+    }
+
+    #[test]
+    fn test_chat_request_builder_fluent_chaining() {
+        // Test that all methods return Self for fluent chaining
+        let request = ChatRequestBuilder::new()
+            .user_message(ContentBlock::text("Hello!"))
+            .assistant_message(ContentBlock::text("Hi!"))
+            .message(Role::User, ContentBlock::text("How are you?"))
+            .message_with_content(Role::Assistant, vec![ContentBlock::text("I'm good!")])
+            .messages(vec![MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("Great!")],
+            }])
+            .system("Be helpful")
+            .temperature(0.7)
+            .top_p(0.9)
+            .stop_sequence("STOP")
+            .stop_sequences(vec!["END".to_string()])
+            .build();
+
+        assert_eq!(request.messages.len(), 5);
+        assert!(request.system.is_some());
+        assert_eq!(request.temperature, Some(0.7));
+        assert_eq!(request.top_p, Some(0.9));
+        assert_eq!(request.stop_sequences.as_ref().unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_chat_request_builder_with_multimodal_content() {
+        let request = ChatRequestBuilder::new()
+            .user_message(ContentBlock::text("What's in this image?"))
+            .message_with_content(Role::User, vec![
+                ContentBlock::text("Please analyze this document:"),
+                ContentBlock::document_base64(DocumentMediaType::Pdf, "pdf_data"),
+                ContentBlock::image_url("https://example.com/image.jpg").unwrap(),
+            ])
+            .build();
+
+        assert_eq!(request.messages.len(), 2);
+        assert_eq!(request.messages[1].content.len(), 3);
+        
+        match &request.messages[1].content[0] {
+            ContentBlock::Text { text, .. } => assert_eq!(text, "Please analyze this document:"),
+            _ => panic!("Expected text content block"),
+        }
+        
+        match &request.messages[1].content[1] {
+            ContentBlock::Document { .. } => {},
+            _ => panic!("Expected document content block"),
+        }
+        
+        match &request.messages[1].content[2] {
+            ContentBlock::Image { .. } => {},
+            _ => panic!("Expected image content block"),
+        }
+    }
+
+    #[test]
+    fn test_chat_request_builder_with_tool_use() {
+        use crate::tools::Tool;
+        
+        let calculator_tool = Tool::new("calculator")
+            .description("Perform mathematical calculations")
+            .schema_value(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "expression": {
+                        "type": "string",
+                        "description": "Mathematical expression to evaluate"
+                    }
+                },
+                "required": ["expression"]
+            }))
+            .build();
+
+        let tool_use_content = ContentBlock::tool_use(
+            "tool_123",
+            "calculator",
+            serde_json::json!({"expression": "2 + 2"})
+        ).unwrap();
+
+        let tool_result_content = ContentBlock::tool_result("tool_123", "4");
+
+        let request = ChatRequestBuilder::new()
+            .user_message(ContentBlock::text("What is 2 + 2?"))
+            .tool(calculator_tool)
+            .assistant_message(tool_use_content)
+            .user_message(tool_result_content)
+            .build();
+
+        assert_eq!(request.messages.len(), 3);
+        assert!(request.tools.is_some());
+        assert_eq!(request.tools.as_ref().unwrap().len(), 1);
+        assert_eq!(request.tools.as_ref().unwrap()[0].name, "calculator");
+        
+        // Check tool use message
+        match &request.messages[1].content[0] {
+            ContentBlock::ToolUse { id, name, .. } => {
+                assert_eq!(id, "tool_123");
+                assert_eq!(name, "calculator");
+            },
+            _ => panic!("Expected tool use content block"),
+        }
+        
+        // Check tool result message
+        match &request.messages[2].content[0] {
+            ContentBlock::ToolResult { tool_use_id, .. } => {
+                assert_eq!(tool_use_id, "tool_123");
+            },
+            _ => panic!("Expected tool result content block"),
+        }
     }
 
     #[test]
