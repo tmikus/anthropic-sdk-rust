@@ -34,9 +34,11 @@ pub mod types;
 mod client_test;
 #[cfg(test)]
 mod streaming_test;
+#[cfg(test)]
+mod advanced_config_test;
 
 // Re-export commonly used types for convenience
-pub use client::{Client, RetryConfig, RequestMiddleware};
+pub use client::{Client, RetryConfig, RequestMiddleware, RequestInterceptor, LoggingInterceptor};
 pub use config::{ClientBuilder, Config};
 pub use error::Error;
 pub use streaming::{MessageStream, MessageAccumulator, StreamEvent, ContentDelta, MessageDelta, PartialMessage};

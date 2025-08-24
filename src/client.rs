@@ -124,13 +124,143 @@ impl Default for RetryConfig {
     }
 }
 
-/// Middleware for request/response logging and debugging
+/// Request/response interceptor trait for custom middleware
+pub trait RequestInterceptor: Send + Sync + std::fmt::Debug {
+    /// Called before sending a request
+    fn before_request(&self, request: &reqwest::Request) -> Result<()> {
+        let _ = request;
+        Ok(())
+    }
+
+    /// Called after receiving a response
+    fn after_response(&self, response: &reqwest::Response) -> Result<()> {
+        let _ = response;
+        Ok(())
+    }
+
+    /// Called when an error occurs
+    fn on_error(&self, error: &Error) {
+        let _ = error;
+    }
+}
+
+/// Built-in logging interceptor
 #[derive(Debug, Clone)]
+pub struct LoggingInterceptor {
+    pub log_requests: bool,
+    pub log_responses: bool,
+    pub log_headers: bool,
+    pub log_body: bool,
+    pub log_errors: bool,
+}
+
+impl Default for LoggingInterceptor {
+    fn default() -> Self {
+        Self {
+            log_requests: false,
+            log_responses: false,
+            log_headers: false,
+            log_body: false,
+            log_errors: false,
+        }
+    }
+}
+
+impl LoggingInterceptor {
+    /// Create a new logging interceptor with all logging disabled
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Enable request logging
+    pub fn with_request_logging(mut self) -> Self {
+        self.log_requests = true;
+        self
+    }
+
+    /// Enable response logging
+    pub fn with_response_logging(mut self) -> Self {
+        self.log_responses = true;
+        self
+    }
+
+    /// Enable header logging
+    pub fn with_header_logging(mut self) -> Self {
+        self.log_headers = true;
+        self
+    }
+
+    /// Enable body logging
+    pub fn with_body_logging(mut self) -> Self {
+        self.log_body = true;
+        self
+    }
+
+    /// Enable error logging
+    pub fn with_error_logging(mut self) -> Self {
+        self.log_errors = true;
+        self
+    }
+
+    /// Enable all logging
+    pub fn with_full_logging(mut self) -> Self {
+        self.log_requests = true;
+        self.log_responses = true;
+        self.log_headers = true;
+        self.log_body = true;
+        self.log_errors = true;
+        self
+    }
+}
+
+impl RequestInterceptor for LoggingInterceptor {
+    fn before_request(&self, request: &reqwest::Request) -> Result<()> {
+        if self.log_requests {
+            eprintln!("HTTP Request: {} {}", request.method(), request.url());
+            
+            if self.log_headers {
+                eprintln!("Request Headers: {:?}", request.headers());
+            }
+            
+            if self.log_body {
+                if let Some(body) = request.body() {
+                    if let Some(bytes) = body.as_bytes() {
+                        if let Ok(body_str) = std::str::from_utf8(bytes) {
+                            eprintln!("Request Body: {}", body_str);
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn after_response(&self, response: &reqwest::Response) -> Result<()> {
+        if self.log_responses {
+            eprintln!("HTTP Response: {} {}", response.status(), response.url());
+            
+            if self.log_headers {
+                eprintln!("Response Headers: {:?}", response.headers());
+            }
+        }
+        Ok(())
+    }
+
+    fn on_error(&self, error: &Error) {
+        if self.log_errors {
+            eprintln!("Request Error: {}", error);
+        }
+    }
+}
+
+/// Middleware for request/response logging and debugging
+#[derive(Debug)]
 pub struct RequestMiddleware {
     pub log_requests: bool,
     pub log_responses: bool,
     pub log_headers: bool,
     pub log_body: bool,
+    pub interceptors: Vec<Arc<dyn RequestInterceptor>>,
 }
 
 impl Default for RequestMiddleware {
@@ -140,11 +270,29 @@ impl Default for RequestMiddleware {
             log_responses: false,
             log_headers: false,
             log_body: false,
+            interceptors: Vec::new(),
+        }
+    }
+}
+
+impl Clone for RequestMiddleware {
+    fn clone(&self) -> Self {
+        Self {
+            log_requests: self.log_requests,
+            log_responses: self.log_responses,
+            log_headers: self.log_headers,
+            log_body: self.log_body,
+            interceptors: self.interceptors.clone(),
         }
     }
 }
 
 impl RequestMiddleware {
+    /// Create a new middleware instance
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Enable request logging
     pub fn with_request_logging(mut self) -> Self {
         self.log_requests = true;
@@ -177,6 +325,17 @@ impl RequestMiddleware {
         self.log_body = true;
         self
     }
+
+    /// Add a custom interceptor
+    pub fn with_interceptor(mut self, interceptor: Arc<dyn RequestInterceptor>) -> Self {
+        self.interceptors.push(interceptor);
+        self
+    }
+
+    /// Add the built-in logging interceptor
+    pub fn with_logging_interceptor(self, interceptor: LoggingInterceptor) -> Self {
+        self.with_interceptor(Arc::new(interceptor))
+    }
 }
 
 #[derive(Debug)]
@@ -195,6 +354,17 @@ impl ClientInner {
         path: &str,
         body: Option<Value>,
     ) -> Result<T> {
+        self.execute_request_with_timeout(method, path, body, None).await
+    }
+
+    /// Execute an HTTP request with optional timeout override
+    pub async fn execute_request_with_timeout<T: DeserializeOwned>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<Value>,
+        timeout_override: Option<Duration>,
+    ) -> Result<T> {
         let url = self.config.base_url.join(path)
             .map_err(|e| Error::Config(format!("Invalid URL path '{}': {}", path, e)))?;
 
@@ -202,13 +372,18 @@ impl ClientInner {
         let mut delay = self.retry_config.initial_delay;
 
         loop {
-            let request_result = self.build_request(method.clone(), &url, body.clone()).await;
+            let request_result = self.build_request(method.clone(), &url, body.clone(), timeout_override).await;
             
             match request_result {
                 Ok(response) => {
                     match self.handle_response::<T>(response).await {
                         Ok(result) => return Ok(result),
                         Err(error) => {
+                            // Call error interceptors
+                            for interceptor in &self.middleware.interceptors {
+                                interceptor.on_error(&error);
+                            }
+                            
                             if attempt >= self.retry_config.max_retries || !error.is_retryable() {
                                 return Err(error);
                             }
@@ -221,6 +396,11 @@ impl ClientInner {
                     }
                 }
                 Err(error) => {
+                    // Call error interceptors
+                    for interceptor in &self.middleware.interceptors {
+                        interceptor.on_error(&error);
+                    }
+                    
                     if attempt >= self.retry_config.max_retries || !error.is_retryable() {
                         return Err(error);
                     }
@@ -251,12 +431,29 @@ impl ClientInner {
         method: reqwest::Method,
         url: &reqwest::Url,
         body: Option<Value>,
+        timeout_override: Option<Duration>,
     ) -> Result<Response> {
         let mut request_builder = self.http_client.request(method.clone(), url.clone());
+
+        // Apply timeout override if provided
+        if let Some(timeout) = timeout_override {
+            request_builder = request_builder.timeout(timeout);
+        }
 
         // Add body if provided
         if let Some(body) = &body {
             request_builder = request_builder.json(body);
+        }
+
+        // Build the request for interceptors
+        let request = request_builder.try_clone()
+            .ok_or_else(|| Error::Config("Failed to clone request for interceptors".to_string()))?
+            .build()
+            .map_err(|e| Error::Config(format!("Failed to build request: {}", e)))?;
+
+        // Call before_request interceptors
+        for interceptor in &self.middleware.interceptors {
+            interceptor.before_request(&request)?;
         }
 
         // Log request if middleware is enabled
@@ -264,11 +461,7 @@ impl ClientInner {
             eprintln!("HTTP Request: {} {}", method, url);
             
             if self.middleware.log_headers {
-                if let Some(request) = request_builder.try_clone() {
-                    if let Ok(built_request) = request.build() {
-                        eprintln!("Request Headers: {:?}", built_request.headers());
-                    }
-                }
+                eprintln!("Request Headers: {:?}", request.headers());
             }
             
             if self.middleware.log_body {
@@ -279,15 +472,21 @@ impl ClientInner {
         }
 
         // Execute the request
+        let timeout_duration = timeout_override.unwrap_or(self.config.timeout);
         let response = request_builder.send().await.map_err(|e| {
             if e.is_timeout() {
-                Error::timeout(self.config.timeout, None)
+                Error::timeout(timeout_duration, None)
             } else if e.is_connect() {
                 Error::Network(format!("Connection failed: {}", e))
             } else {
                 Error::Http(e)
             }
         })?;
+
+        // Call after_response interceptors
+        for interceptor in &self.middleware.interceptors {
+            interceptor.after_response(&response)?;
+        }
 
         // Log response if middleware is enabled
         if self.middleware.log_responses {
@@ -336,6 +535,16 @@ impl ClientInner {
         path: &str,
         body: Option<Value>,
     ) -> Result<MessageStream> {
+        self.execute_streaming_request_with_timeout(path, body, None).await
+    }
+
+    /// Execute a streaming HTTP request with optional timeout override
+    pub async fn execute_streaming_request_with_timeout(
+        &self,
+        path: &str,
+        body: Option<Value>,
+        timeout_override: Option<Duration>,
+    ) -> Result<MessageStream> {
         let url = self.config.base_url.join(path)
             .map_err(|e| Error::Config(format!("Invalid URL path '{}': {}", path, e)))?;
 
@@ -343,7 +552,7 @@ impl ClientInner {
         let mut delay = self.retry_config.initial_delay;
 
         loop {
-            let request_result = self.build_streaming_request(&url, body.clone()).await;
+            let request_result = self.build_streaming_request(&url, body.clone(), timeout_override).await;
             
             match request_result {
                 Ok(stream) => return Ok(stream),
@@ -377,14 +586,31 @@ impl ClientInner {
         &self,
         url: &reqwest::Url,
         body: Option<Value>,
+        timeout_override: Option<Duration>,
     ) -> Result<MessageStream> {
 
 
         let mut request_builder = self.http_client.post(url.clone());
 
+        // Apply timeout override if provided
+        if let Some(timeout) = timeout_override {
+            request_builder = request_builder.timeout(timeout);
+        }
+
         // Add body if provided
         if let Some(body) = &body {
             request_builder = request_builder.json(body);
+        }
+
+        // Build the request for interceptors
+        let request = request_builder.try_clone()
+            .ok_or_else(|| Error::Config("Failed to clone request for interceptors".to_string()))?
+            .build()
+            .map_err(|e| Error::Config(format!("Failed to build request: {}", e)))?;
+
+        // Call before_request interceptors
+        for interceptor in &self.middleware.interceptors {
+            interceptor.before_request(&request)?;
         }
 
         // Log request if middleware is enabled
@@ -399,9 +625,10 @@ impl ClientInner {
         }
 
         // Execute the request and get the response
+        let timeout_duration = timeout_override.unwrap_or(self.config.timeout);
         let response = request_builder.send().await.map_err(|e| {
             if e.is_timeout() {
-                Error::timeout(self.config.timeout, None)
+                Error::timeout(timeout_duration, None)
             } else if e.is_connect() {
                 Error::Network(format!("Connection failed: {}", e))
             } else {
@@ -422,6 +649,11 @@ impl ClientInner {
             }
             
             return self.handle_error_response(status, &response_text, request_id);
+        }
+
+        // Call after_response interceptors
+        for interceptor in &self.middleware.interceptors {
+            interceptor.after_response(&response)?;
         }
 
         // Log response if middleware is enabled
@@ -673,6 +905,49 @@ impl Client {
         model: Model,
         request: ChatRequest,
     ) -> Result<Message> {
+        self.execute_chat_with_options(model, request, None).await
+    }
+
+    /// Execute a chat request with model and timeout overrides.
+    ///
+    /// This method allows you to override both the model and timeout for a specific request.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model to use for this specific request
+    /// * `request` - The chat request containing messages and optional parameters
+    /// * `timeout` - Optional timeout override for this request
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock};
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .user_message(ContentBlock::text("This might take a while..."))
+    ///         .build();
+    ///     
+    ///     // Use longer timeout for this specific request
+    ///     let response = client.execute_chat_with_options(
+    ///         Model::Claude35Sonnet20241022,
+    ///         request,
+    ///         Some(Duration::from_secs(120))
+    ///     ).await?;
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn execute_chat_with_options(
+        &self,
+        model: Model,
+        request: ChatRequest,
+        timeout: Option<Duration>,
+    ) -> Result<Message> {
         // Create the request body with model and max_tokens
         let mut body = serde_json::to_value(&request)?;
         
@@ -680,12 +955,51 @@ impl Client {
         body["model"] = serde_json::to_value(&model)?;
         body["max_tokens"] = serde_json::to_value(self.inner.config.max_tokens)?;
         
-        // Execute the request
-        self.inner.execute_request(
+        // Execute the request with optional timeout override
+        self.inner.execute_request_with_timeout(
             reqwest::Method::POST,
             "/v1/messages",
             Some(body),
+            timeout,
         ).await
+    }
+
+    /// Execute a chat request with timeout override using the client's default model.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The chat request containing messages and optional parameters
+    /// * `timeout` - Timeout override for this request
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock};
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .user_message(ContentBlock::text("Quick question"))
+    ///         .build();
+    ///     
+    ///     // Use shorter timeout for this quick request
+    ///     let response = client.execute_chat_with_timeout(
+    ///         request,
+    ///         Duration::from_secs(10)
+    ///     ).await?;
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn execute_chat_with_timeout(
+        &self,
+        request: ChatRequest,
+        timeout: Duration,
+    ) -> Result<Message> {
+        self.execute_chat_with_options(self.inner.config.model.clone(), request, Some(timeout)).await
     }
 
     /// Stream a chat request using the client's configured model and max_tokens.
@@ -778,6 +1092,52 @@ impl Client {
         model: Model,
         request: ChatRequest,
     ) -> Result<MessageStream> {
+        self.stream_chat_with_options(model, request, None).await
+    }
+
+    /// Stream a chat request with model and timeout overrides.
+    ///
+    /// This method allows you to override both the model and timeout for a specific streaming request.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model to use for this specific request
+    /// * `request` - The chat request containing messages and optional parameters
+    /// * `timeout` - Optional timeout override for this request
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+    /// use futures::StreamExt;
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .user_message(ContentBlock::text("Generate a long story"))
+    ///         .build();
+    ///     
+    ///     // Use longer timeout for streaming long content
+    ///     let mut stream = client.stream_chat_with_options(
+    ///         Model::Claude35Sonnet20241022,
+    ///         request,
+    ///         Some(Duration::from_secs(300))
+    ///     ).await?;
+    ///     
+    ///     // Process stream events...
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn stream_chat_with_options(
+        &self,
+        model: Model,
+        request: ChatRequest,
+        timeout: Option<Duration>,
+    ) -> Result<MessageStream> {
         // Create the request body with model, max_tokens, and stream=true
         let mut body = serde_json::to_value(&request)?;
         
@@ -786,8 +1146,49 @@ impl Client {
         body["max_tokens"] = serde_json::to_value(self.inner.config.max_tokens)?;
         body["stream"] = serde_json::Value::Bool(true);
         
-        // Execute the streaming request
-        self.inner.execute_streaming_request("/v1/messages", Some(body)).await
+        // Execute the streaming request with optional timeout override
+        self.inner.execute_streaming_request_with_timeout("/v1/messages", Some(body), timeout).await
+    }
+
+    /// Stream a chat request with timeout override using the client's default model.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The chat request containing messages and optional parameters
+    /// * `timeout` - Timeout override for this request
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+    /// use futures::StreamExt;
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .user_message(ContentBlock::text("Quick question"))
+    ///         .build();
+    ///     
+    ///     // Use shorter timeout for quick streaming
+    ///     let mut stream = client.stream_chat_with_timeout(
+    ///         request,
+    ///         Duration::from_secs(15)
+    ///     ).await?;
+    ///     
+    ///     // Process stream events...
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
+    pub async fn stream_chat_with_timeout(
+        &self,
+        request: ChatRequest,
+        timeout: Duration,
+    ) -> Result<MessageStream> {
+        self.stream_chat_with_options(self.inner.config.model.clone(), request, Some(timeout)).await
     }
 
     /// Count tokens in a request without sending it to Claude.

@@ -3,8 +3,10 @@
 use std::time::Duration;
 use url::Url;
 
+use std::sync::Arc;
+
 use crate::{
-    client::{Client, ClientInner, RetryConfig, RequestMiddleware},
+    client::{Client, ClientInner, RetryConfig, RequestMiddleware, RequestInterceptor, LoggingInterceptor},
     error::Error,
     types::Model,
     Result,
@@ -157,7 +159,22 @@ impl ClientBuilder {
 
     /// Enable request logging
     pub fn with_logging(mut self) -> Self {
-        self.middleware = Some(RequestMiddleware::default().with_full_logging());
+        let middleware = self.middleware.take().unwrap_or_default();
+        self.middleware = Some(middleware.with_full_logging());
+        self
+    }
+
+    /// Add a custom request interceptor
+    pub fn with_interceptor(mut self, interceptor: Arc<dyn RequestInterceptor>) -> Self {
+        let middleware = self.middleware.take().unwrap_or_default();
+        self.middleware = Some(middleware.with_interceptor(interceptor));
+        self
+    }
+
+    /// Add the built-in logging interceptor with custom configuration
+    pub fn with_logging_interceptor(mut self, interceptor: LoggingInterceptor) -> Self {
+        let middleware = self.middleware.take().unwrap_or_default();
+        self.middleware = Some(middleware.with_logging_interceptor(interceptor));
         self
     }
 
@@ -232,10 +249,22 @@ impl ClientBuilder {
             builder.build().expect("Failed to create HTTP client")
         });
 
+        // Handle retry configuration - if retry_config is explicitly set, use it
+        // Otherwise, create one from max_retries if set
+        let retry_config = if let Some(retry_config) = self.retry_config {
+            retry_config
+        } else {
+            let mut default_retry = RetryConfig::default();
+            if let Some(max_retries) = self.max_retries {
+                default_retry.max_retries = max_retries;
+            }
+            default_retry
+        };
+
         let inner = ClientInner {
             http_client,
             config,
-            retry_config: self.retry_config.unwrap_or_default(),
+            retry_config,
             middleware: self.middleware.unwrap_or_default(),
         };
 
