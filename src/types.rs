@@ -1,9 +1,33 @@
-//! Core types and data models for the Anthropic API
+//! Core types and data models for the Anthropic API.
+//!
+//! This module contains all the request and response types used when interacting
+//! with the Anthropic API, including message structures, content blocks, and
+//! configuration enums.
 
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-/// Available Claude models
+/// Available Claude models with their capabilities and token limits.
+///
+/// Each model has different strengths, speeds, and costs. Choose the model that
+/// best fits your use case:
+///
+/// - **Haiku**: Fastest and most cost-effective for simple tasks
+/// - **Sonnet**: Balanced performance for most applications  
+/// - **Opus**: Most capable for complex reasoning tasks
+///
+/// # Examples
+///
+/// ```rust
+/// use anthropic::Model;
+///
+/// // Get the maximum tokens for a model
+/// let max_tokens = Model::Claude35Sonnet20241022.max_tokens();
+/// println!("Max tokens: {}", max_tokens);
+///
+/// // Compare models
+/// assert_eq!(Model::Claude3Haiku20240307.max_tokens(), 200_000);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Model {
@@ -35,31 +59,98 @@ impl Model {
     }
 }
 
-/// Message role
+/// Message role indicating who sent the message.
+///
+/// In a conversation, messages alternate between `User` (human) and `Assistant` (Claude).
+/// The conversation must always start with a `User` message.
+///
+/// # Examples
+///
+/// ```rust
+/// use anthropic::{Role, MessageParam, ContentBlock};
+///
+/// let user_message = MessageParam {
+///     role: Role::User,
+///     content: vec![ContentBlock::text("Hello!")],
+/// };
+///
+/// let assistant_message = MessageParam {
+///     role: Role::Assistant,
+///     content: vec![ContentBlock::text("Hi there!")],
+/// };
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Role {
+    /// Message from the human user
     User,
+    /// Message from Claude (the assistant)
     Assistant,
 }
 
-/// Stop reason for message completion
+/// Reason why Claude stopped generating tokens.
+///
+/// This indicates how the message generation ended, which can be useful for
+/// understanding whether the response was complete or truncated.
+///
+/// # Examples
+///
+/// ```rust
+/// use anthropic::StopReason;
+///
+/// // Check if the response was complete
+/// let stop_reason = StopReason::EndTurn;
+/// match stop_reason {
+///     StopReason::EndTurn => println!("Response completed naturally"),
+///     StopReason::MaxTokens => println!("Response was truncated due to token limit"),
+///     StopReason::StopSequence => println!("Response stopped at a stop sequence"),
+///     StopReason::ToolUse => println!("Response ended to use a tool"),
+/// }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StopReason {
+    /// Claude finished its response naturally
     EndTurn,
+    /// Response was truncated due to max_tokens limit
     MaxTokens,
+    /// Response stopped at a configured stop sequence
     StopSequence,
+    /// Claude wants to use a tool
     ToolUse,
 }
 
-/// Token usage information
+/// Token usage information for a request/response.
+///
+/// This provides detailed information about token consumption, including
+/// input tokens (from your messages) and output tokens (from Claude's response).
+/// Cache-related fields are included when using prompt caching features.
+///
+/// # Examples
+///
+/// ```rust
+/// use anthropic::Usage;
+///
+/// let usage = Usage {
+///     input_tokens: 50,
+///     output_tokens: 100,
+///     cache_creation_input_tokens: None,
+///     cache_read_input_tokens: None,
+/// };
+///
+/// let total_tokens = usage.input_tokens + usage.output_tokens;
+/// println!("Total tokens used: {}", total_tokens);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Usage {
+    /// Number of input tokens (from your messages)
     pub input_tokens: u32,
+    /// Number of output tokens (from Claude's response)
     pub output_tokens: u32,
+    /// Tokens used for cache creation (when using prompt caching)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache_creation_input_tokens: Option<u32>,
+    /// Tokens read from cache (when using prompt caching)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cache_read_input_tokens: Option<u32>,
 }

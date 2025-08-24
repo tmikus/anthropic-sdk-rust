@@ -1,4 +1,8 @@
 //! Client implementation for the Anthropic API
+//!
+//! This module provides the main [`Client`] struct for interacting with the Anthropic API.
+//! The client supports both synchronous and streaming chat requests, with built-in retry
+//! logic and comprehensive error handling.
 
 use std::pin::Pin;
 use std::sync::Arc;
@@ -17,7 +21,84 @@ use crate::{
     Result,
 };
 
-/// Main client for interacting with the Anthropic API
+/// Main client for interacting with the Anthropic API.
+///
+/// The `Client` provides a high-level interface for sending messages to Claude models,
+/// streaming responses, and managing API interactions. It's designed to be thread-safe
+/// and can be cloned cheaply for use across multiple tasks.
+///
+/// # Examples
+///
+/// ## Basic Usage
+///
+/// ```rust,no_run
+/// use anthropic::{Client, Model, ContentBlock};
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     // Create a client with default configuration
+///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+///     
+///     // Send a simple message
+///     let request = client.chat_builder()
+///         .user_message(ContentBlock::text("Hello, Claude!"))
+///         .build();
+///     
+///     let response = client.execute_chat(request).await?;
+///     println!("Response: {:?}", response);
+///     
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Advanced Configuration
+///
+/// ```rust,no_run
+/// use anthropic::{Client, Model};
+/// use std::time::Duration;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let client = Client::builder()
+///         .api_key("your-api-key")
+///         .model(Model::Claude35Sonnet20241022)
+///         .max_tokens(2000)
+///         .timeout(Duration::from_secs(30))
+///         .build()?;
+///     
+///     // Use the configured client...
+///     Ok(())
+/// }
+/// ```
+///
+/// ## Streaming Responses
+///
+/// ```rust,no_run
+/// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+/// use futures::StreamExt;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+///     
+///     let request = client.chat_builder()
+///         .user_message(ContentBlock::text("Tell me a story"))
+///         .build();
+///     
+///     let mut stream = client.stream_chat(request).await?;
+///     
+///     while let Some(event) = stream.next().await {
+///         match event? {
+///             StreamEvent::ContentBlockDelta { delta, .. } => {
+///                 // Handle streaming text
+///             }
+///             _ => {}
+///         }
+///     }
+///     
+///     Ok(())
+/// }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Client {
     pub(crate) inner: Arc<ClientInner>,
@@ -434,12 +515,63 @@ impl ClientInner {
 }
 
 impl Client {
-    /// Create a new client builder
+    /// Create a new client builder for advanced configuration.
+    ///
+    /// Use this method when you need to customize client settings beyond the defaults.
+    /// The builder provides a fluent API for setting API keys, timeouts, base URLs, and more.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model};
+    /// use std::time::Duration;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::builder()
+    ///         .api_key("your-api-key")
+    ///         .model(Model::Claude35Sonnet20241022)
+    ///         .max_tokens(2000)
+    ///         .timeout(Duration::from_secs(30))
+    ///         .build()?;
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn builder() -> ClientBuilder {
         ClientBuilder::new()
     }
 
-    /// Create a new client with the specified model using environment variables for configuration
+    /// Create a new client with the specified model using environment variables for configuration.
+    ///
+    /// This is the simplest way to create a client. It will automatically read the API key
+    /// from the `ANTHROPIC_API_KEY` environment variable and use default settings for
+    /// everything else.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The Claude model to use for requests
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The `ANTHROPIC_API_KEY` environment variable is not set
+    /// - The API key is invalid or empty
+    /// - Network configuration fails
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     // Requires ANTHROPIC_API_KEY environment variable
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(model: Model) -> Result<Self> {
         Self::builder().model(model).build()
     }
@@ -451,12 +583,91 @@ impl Client {
         }
     }
 
-    /// Execute a chat request using the client's configured model and max_tokens
+    /// Execute a chat request using the client's configured model and max_tokens.
+    ///
+    /// This is the primary method for sending messages to Claude. It uses the model
+    /// and max_tokens configured when the client was created.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The chat request containing messages and optional parameters
+    ///
+    /// # Returns
+    ///
+    /// Returns a `Message` containing Claude's response, including content blocks,
+    /// usage statistics, and metadata.
+    ///
+    /// # Errors
+    ///
+    /// This method can return various errors:
+    /// - `Error::Authentication` - Invalid API key
+    /// - `Error::RateLimit` - Too many requests
+    /// - `Error::Network` - Network connectivity issues
+    /// - `Error::Api` - API-specific errors (invalid parameters, etc.)
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .user_message(ContentBlock::text("What is the capital of France?"))
+    ///         .build();
+    ///     
+    ///     let response = client.execute_chat(request).await?;
+    ///     
+    ///     for content in response.content {
+    ///         if let ContentBlock::Text { text, .. } = content {
+    ///             println!("Claude: {}", text);
+    ///         }
+    ///     }
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn execute_chat(&self, request: ChatRequest) -> Result<Message> {
         self.execute_chat_with_model(self.inner.config.model.clone(), request).await
     }
 
-    /// Execute a chat request with a specific model override
+    /// Execute a chat request with a specific model override.
+    ///
+    /// Use this method when you want to use a different model for a specific request
+    /// without changing the client's default configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model to use for this specific request
+    /// * `request` - The chat request containing messages and optional parameters
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     // Client configured with Sonnet
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .user_message(ContentBlock::text("Quick question: what's 2+2?"))
+    ///         .build();
+    ///     
+    ///     // Use faster Haiku model for this simple request
+    ///     let response = client.execute_chat_with_model(
+    ///         Model::Claude3Haiku20240307,
+    ///         request
+    ///     ).await?;
+    ///     
+    ///     println!("Used model: {:?}", response.model);
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn execute_chat_with_model(
         &self,
         model: Model,
@@ -477,12 +688,91 @@ impl Client {
         ).await
     }
 
-    /// Stream a chat request using the client's configured model and max_tokens
+    /// Stream a chat request using the client's configured model and max_tokens.
+    ///
+    /// This method enables real-time streaming of Claude's response, allowing you to
+    /// process and display content as it's generated. This is ideal for interactive
+    /// applications where you want to show progress to users.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The chat request containing messages and optional parameters
+    ///
+    /// # Returns
+    ///
+    /// Returns a `MessageStream` that yields `StreamEvent`s as Claude generates the response.
+    /// Events include message start/stop, content block deltas, and usage information.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+    /// use futures::StreamExt;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .user_message(ContentBlock::text("Write a short story"))
+    ///         .build();
+    ///     
+    ///     let mut stream = client.stream_chat(request).await?;
+    ///     
+    ///     while let Some(event) = stream.next().await {
+    ///         match event? {
+    ///             StreamEvent::ContentBlockDelta { delta, .. } => {
+    ///                 if let anthropic::ContentDelta::TextDelta { text } = delta {
+    ///                     print!("{}", text); // Print text as it streams
+    ///                 }
+    ///             }
+    ///             StreamEvent::MessageStop => break,
+    ///             _ => {}
+    ///         }
+    ///     }
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn stream_chat(&self, request: ChatRequest) -> Result<MessageStream> {
         self.stream_chat_with_model(self.inner.config.model.clone(), request).await
     }
 
-    /// Stream a chat request with a specific model override
+    /// Stream a chat request with a specific model override.
+    ///
+    /// Like `stream_chat`, but allows you to specify a different model for this
+    /// specific request without changing the client's default configuration.
+    ///
+    /// # Arguments
+    ///
+    /// * `model` - The model to use for this specific request
+    /// * `request` - The chat request containing messages and optional parameters
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+    /// use futures::StreamExt;
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .user_message(ContentBlock::text("Quick response needed"))
+    ///         .build();
+    ///     
+    ///     // Use Haiku for faster streaming
+    ///     let mut stream = client.stream_chat_with_model(
+    ///         Model::Claude3Haiku20240307,
+    ///         request
+    ///     ).await?;
+    ///     
+    ///     // Process stream events...
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn stream_chat_with_model(
         &self,
         model: Model,
@@ -500,7 +790,45 @@ impl Client {
         self.inner.execute_streaming_request("/v1/messages", Some(body)).await
     }
 
-    /// Count tokens in a request
+    /// Count tokens in a request without sending it to Claude.
+    ///
+    /// This method allows you to estimate token usage before making an actual request,
+    /// which is useful for cost estimation and ensuring you stay within token limits.
+    ///
+    /// # Arguments
+    ///
+    /// * `request` - The token counting request containing messages to analyze
+    ///
+    /// # Returns
+    ///
+    /// Returns a `TokenCount` with the estimated input token count.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock, types::CountTokensRequest};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = CountTokensRequest {
+    ///         messages: vec![
+    ///             anthropic::types::MessageParam {
+    ///                 role: anthropic::Role::User,
+    ///                 content: vec![ContentBlock::text("How many tokens is this message?")],
+    ///             }
+    ///         ],
+    ///         system: None,
+    ///         tools: None,
+    ///     };
+    ///     
+    ///     let token_count = client.count_tokens(request).await?;
+    ///     println!("Input tokens: {}", token_count.input_tokens);
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub async fn count_tokens(&self, request: CountTokensRequest) -> Result<TokenCount> {
         // Create the request body with model
         let mut body = serde_json::to_value(&request)?;
@@ -516,17 +844,78 @@ impl Client {
         ).await
     }
 
-    /// Create a new chat request builder
+    /// Create a new chat request builder.
+    ///
+    /// The builder provides a fluent API for constructing chat requests with
+    /// messages, system prompts, tools, and other parameters.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model, ContentBlock, Role};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     let request = client.chat_builder()
+    ///         .system("You are a helpful assistant.")
+    ///         .user_message(ContentBlock::text("Hello!"))
+    ///         .assistant_message(ContentBlock::text("Hi there! How can I help?"))
+    ///         .user_message(ContentBlock::text("What's the weather like?"))
+    ///         .temperature(0.7)
+    ///         .build();
+    ///     
+    ///     let response = client.execute_chat(request).await?;
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn chat_builder(&self) -> ChatRequestBuilder {
         ChatRequestBuilder::new()
     }
 
-    /// Get the client's default model
+    /// Get the client's default model.
+    ///
+    /// Returns the model that will be used for requests when no model override is specified.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     println!("Default model: {:?}", client.default_model());
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn default_model(&self) -> Model {
         self.inner.config.model.clone()
     }
 
-    /// Get the client's default max_tokens
+    /// Get the client's default max_tokens setting.
+    ///
+    /// Returns the maximum number of tokens that will be used for response generation
+    /// when no override is specified.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use anthropic::{Client, Model};
+    ///
+    /// #[tokio::main]
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
+    ///     
+    ///     println!("Default max tokens: {}", client.default_max_tokens());
+    ///     
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn default_max_tokens(&self) -> u32 {
         self.inner.config.max_tokens
     }

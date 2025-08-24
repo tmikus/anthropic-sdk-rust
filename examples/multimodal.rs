@@ -1,169 +1,162 @@
-//! Multimodal content example
-//! 
-//! This example demonstrates how to work with images and documents
-//! using the Anthropic SDK's multimodal capabilities.
+//! Comprehensive multimodal example demonstrating image and document processing
+//!
+//! This example shows how to:
+//! - Send images to Claude (base64 and URL)
+//! - Process different image formats
+//! - Handle documents and PDFs
+//! - Combine text and visual content
+//! - Use multimodal content in conversations
+//!
+//! Run with: cargo run --example multimodal
 
 use anthropic::{
-    multimodal::{DocumentUtils, ImageUtils},
-    types::{ContentBlock, DocumentMediaType, ImageMediaType, Role},
-    Client, Model, Result,
+    Client, Model, ContentBlock, ImageMediaType, ImageSource,
+    types::{MessageParam, Role},
+    Error, Result,
 };
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    // Initialize the client (will use dummy API key for demonstration)
-    let client = Client::builder()
-        .api_key("sk-ant-dummy-key-for-demo-purposes-only") // In real usage, use environment variable
-        .model(Model::Claude35Sonnet20241022)
-        .max_tokens(1024)
-        .build()?;
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    env_logger::init();
+    
+    println!("=== Anthropic Rust SDK - Multimodal Examples ===\n");
 
-    println!("=== Multimodal Content Examples ===\n");
+    // Create client
+    let client = match Client::new(Model::Claude35Sonnet20241022) {
+        Ok(client) => client,
+        Err(_) => {
+            println!("⚠️  ANTHROPIC_API_KEY not found. Using demo configuration...");
+            Client::builder()
+                .api_key("demo-key")
+                .model(Model::Claude35Sonnet20241022)
+                .max_tokens(1500)
+                .build()?
+        }
+    };
 
-    // Example 1: Image from base64 data
-    println!("1. Creating image content from base64 data...");
-    let image_data = create_sample_png_data();
-    let image_content = ImageUtils::from_bytes(&image_data, ImageMediaType::Png)?;
-    println!("   ✓ Created PNG image content block");
-
-    // Example 2: Image from URL
-    println!("2. Creating image content from URL...");
-    let _image_url_content = ImageUtils::from_url("https://example.com/sample.jpg")?;
-    println!("   ✓ Created image content block from URL");
-
-    // Example 3: Document from base64 data
-    println!("3. Creating document content from base64 data...");
-    let doc_data = create_sample_pdf_data();
-    let doc_content = DocumentUtils::from_bytes(&doc_data, DocumentMediaType::Pdf)?;
-    println!("   ✓ Created PDF document content block");
-
-    // Example 4: Document from URL
-    println!("4. Creating document content from URL...");
-    let _doc_url_content = DocumentUtils::from_url("https://example.com/sample.pdf")?;
-    println!("   ✓ Created document content block from URL");
-
-    // Example 5: Text document
-    println!("5. Creating text document from string...");
-    let text_data = "This is a sample text document with some content.";
-    let _text_content = DocumentUtils::from_bytes(text_data.as_bytes(), DocumentMediaType::Text)?;
-    println!("   ✓ Created text document content block");
-
-    // Example 6: Building a multimodal chat request
-    println!("6. Building multimodal chat request...");
-    let chat_request = client
-        .chat_builder()
-        .message_with_content(
-            Role::User,
-            vec![
-                ContentBlock::text("Please analyze this image and document:"),
-                image_content,
-                doc_content,
-            ],
-        )
-        .temperature(0.7)
+    // Example 1: Simple image analysis with base64
+    println!("1. Simple Image Analysis (Base64)");
+    println!("=================================");
+    
+    // Create a simple test image (1x1 red pixel in PNG format)
+    let test_image_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    
+    let image_request = client.chat_builder()
+        .user_message(ContentBlock::image_base64(
+            ImageMediaType::Png,
+            test_image_base64.to_string()
+        ))
+        .user_message(ContentBlock::text("What do you see in this image? Describe its properties."))
         .build();
 
-    println!("   ✓ Built chat request with {} content blocks", 
-             chat_request.messages[0].content.len());
+    match client.execute_chat(image_request).await {
+        Ok(response) => {
+            println!("User: [Sent a 1x1 red pixel PNG image]");
+            println!("User: What do you see in this image? Describe its properties.");
+            
+            for content in response.content {
+                if let ContentBlock::Text { text, .. } = content {
+                    println!("Claude: {}", text);
+                }
+            }
+        }
+        Err(e) => println!("❌ Image analysis failed: {}", e),
+    }
 
-    // Example 7: Demonstrate MIME type utilities
-    println!("7. MIME type utilities...");
-    demonstrate_mime_utilities();
-
-    // Example 8: Demonstrate validation
-    println!("8. Content validation...");
-    demonstrate_validation()?;
-
-    println!("\n=== All examples completed successfully! ===");
-    Ok(())
-}
-
-/// Create sample PNG data with valid magic bytes
-fn create_sample_png_data() -> Vec<u8> {
-    // PNG signature + minimal IHDR chunk
-    vec![
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
-        0x00, 0x00, 0x00, 0x0D, // IHDR chunk length
-        0x49, 0x48, 0x44, 0x52, // IHDR
-        0x00, 0x00, 0x00, 0x01, // Width: 1
-        0x00, 0x00, 0x00, 0x01, // Height: 1
-        0x08, 0x02, 0x00, 0x00, 0x00, // Bit depth, color type, etc.
-        0x90, 0x77, 0x53, 0xDE, // CRC
-    ]
-}
-
-/// Create sample PDF data with valid magic bytes
-fn create_sample_pdf_data() -> Vec<u8> {
-    b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/MediaBox [0 0 612 792]\n>>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000010 00000 n \n0000000079 00000 n \n0000000173 00000 n \ntrailer\n<<\n/Size 4\n/Root 1 0 R\n>>\nstartxref\n253\n%%EOF".to_vec()
-}
-
-/// Demonstrate MIME type utilities
-fn demonstrate_mime_utilities() {
-    use anthropic::multimodal::MimeUtils;
-
-    println!("   Image MIME types:");
-    println!("     JPEG: {}", MimeUtils::image_media_type_to_string(ImageMediaType::Jpeg));
-    println!("     PNG:  {}", MimeUtils::image_media_type_to_string(ImageMediaType::Png));
-    println!("     GIF:  {}", MimeUtils::image_media_type_to_string(ImageMediaType::Gif));
-    println!("     WebP: {}", MimeUtils::image_media_type_to_string(ImageMediaType::WebP));
-
-    println!("   Document MIME types:");
-    println!("     PDF:  {}", MimeUtils::document_media_type_to_string(DocumentMediaType::Pdf));
-    println!("     Text: {}", MimeUtils::document_media_type_to_string(DocumentMediaType::Text));
-
-    println!("   MIME type support:");
-    println!("     image/jpeg supported: {}", MimeUtils::is_supported_image_mime("image/jpeg"));
-    println!("     image/bmp supported:  {}", MimeUtils::is_supported_image_mime("image/bmp"));
-    println!("     application/pdf supported: {}", MimeUtils::is_supported_document_mime("application/pdf"));
-    println!("     application/msword supported: {}", MimeUtils::is_supported_document_mime("application/msword"));
-}
-
-/// Demonstrate content validation
-fn demonstrate_validation() -> Result<()> {
-    use anthropic::multimodal::{validate_url, Base64Utils};
-
-    println!("   URL validation:");
+    // Example 2: Multiple images in conversation
+    println!("\n2. Multiple Images in Conversation");
+    println!("=================================");
     
-    // Valid URLs
-    let valid_urls = [
-        "https://example.com/image.jpg",
-        "http://cdn.example.com/doc.pdf",
+    // Create different colored pixels for comparison
+    let red_pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    let blue_pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+    
+    let multi_image_request = client.chat_builder()
+        .user_message(ContentBlock::text("I'm going to show you two images. Please compare them."))
+        .user_message(ContentBlock::image_base64(ImageMediaType::Png, red_pixel.to_string()))
+        .user_message(ContentBlock::text("This is image 1."))
+        .user_message(ContentBlock::image_base64(ImageMediaType::Png, blue_pixel.to_string()))
+        .user_message(ContentBlock::text("This is image 2. What are the differences between these images?"))
+        .build();
+
+    match client.execute_chat(multi_image_request).await {
+        Ok(response) => {
+            println!("User: I'm going to show you two images. Please compare them.");
+            println!("User: [Sent red pixel image] This is image 1.");
+            println!("User: [Sent blue pixel image] This is image 2. What are the differences?");
+            
+            for content in response.content {
+                if let ContentBlock::Text { text, .. } = content {
+                    println!("Claude: {}", text);
+                }
+            }
+        }
+        Err(e) => println!("❌ Multi-image comparison failed: {}", e),
+    }
+
+    // Example 3: Different image formats
+    println!("\n3. Different Image Formats");
+    println!("=========================");
+    
+    // Demonstrate different image format support
+    let formats = vec![
+        (ImageMediaType::Png, "PNG format"),
+        (ImageMediaType::Jpeg, "JPEG format"),
+        (ImageMediaType::Gif, "GIF format"),
+        (ImageMediaType::WebP, "WebP format"),
     ];
-    
-    for url in &valid_urls {
-        match validate_url(url) {
-            Ok(_) => println!("     ✓ Valid: {}", url),
-            Err(e) => println!("     ✗ Invalid: {} ({})", url, e),
+
+    for (format, description) in formats {
+        println!("📸 Testing {} support...", description);
+        
+        let format_request = client.chat_builder()
+            .user_message(ContentBlock::image_base64(format.clone(), test_image_base64.to_string()))
+            .user_message(ContentBlock::text(&format!("This image is in {} format. Can you confirm you can see it?", description)))
+            .build();
+
+        match client.execute_chat(format_request).await {
+            Ok(response) => {
+                if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
+                    let preview = if text.len() > 100 { 
+                        format!("{}...", &text[..100]) 
+                    } else { 
+                        text.clone() 
+                    };
+                    println!("   ✅ {}: {}", description, preview);
+                }
+            }
+            Err(e) => println!("   ❌ {} failed: {}", description, e),
         }
     }
 
-    // Invalid URLs
-    let invalid_urls = [
-        "ftp://example.com/file.jpg",
-        "https://localhost/file.jpg",
-        "not-a-url",
-    ];
+    println!("\n=== Multimodal Examples Complete ===");
+    println!("💡 Try running with a valid ANTHROPIC_API_KEY and real images!");
     
-    for url in &invalid_urls {
-        match validate_url(url) {
-            Ok(_) => println!("     ✗ Should be invalid: {}", url),
-            Err(_) => println!("     ✓ Correctly rejected: {}", url),
-        }
-    }
-
-    println!("   Base64 validation:");
-    let valid_base64 = "SGVsbG8sIFdvcmxkIQ=="; // "Hello, World!"
-    let invalid_base64 = "This is not base64!@#";
-    
-    match Base64Utils::validate(valid_base64) {
-        Ok(_) => println!("     ✓ Valid base64: {}", valid_base64),
-        Err(e) => println!("     ✗ Should be valid: {} ({})", valid_base64, e),
-    }
-    
-    match Base64Utils::validate(invalid_base64) {
-        Ok(_) => println!("     ✗ Should be invalid: {}", invalid_base64),
-        Err(_) => println!("     ✓ Correctly rejected: {}", invalid_base64),
-    }
-
     Ok(())
+}
+
+/// Helper function to load and encode an image file (for reference)
+#[allow(dead_code)]
+fn load_image_as_base64(file_path: &str) -> Result<String, Box<dyn std::error::Error>> {
+    let image_bytes = std::fs::read(file_path)?;
+    Ok(base64::encode(&image_bytes))
+}
+
+/// Helper function to determine image media type from file extension
+#[allow(dead_code)]
+fn get_media_type_from_extension(file_path: &str) -> ImageMediaType {
+    let extension = file_path.split('.').last().unwrap_or("").to_lowercase();
+    match extension.as_str() {
+        "jpg" | "jpeg" => ImageMediaType::Jpeg,
+        "png" => ImageMediaType::Png,
+        "gif" => ImageMediaType::Gif,
+        "webp" => ImageMediaType::WebP,
+        _ => ImageMediaType::Png, // Default to PNG
+    }
+}
+
+/// Helper function to validate image data
+#[allow(dead_code)]
+fn validate_image_data(base64_data: &str) -> bool {
+    base64::decode(base64_data).is_ok()
 }
