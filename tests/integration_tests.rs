@@ -144,7 +144,7 @@ async fn test_content_blocks() {
 #[tokio::test]
 async fn test_tool_definition() {
     // Test basic tool creation
-    let simple_tool = Tool::new("calculator")
+    let simple_tool = Tool::builder("calculator")
         .description("Perform calculations")
         .schema_value(json!({
             "type": "object",
@@ -213,7 +213,7 @@ async fn test_error_handling() {
         match error {
             Error::Authentication(_) => {
                 // Expected for invalid API key
-                assert!(error.is_retryable() == false);
+                assert!(!error.is_retryable());
             }
             Error::Network(_) => {
                 // Could happen if no network
@@ -428,7 +428,7 @@ async fn example_tool_workflow() {
     let client = create_test_client();
 
     // Define a calculator tool
-    let calculator = Tool::new("calculate")
+    let calculator = Tool::builder("calculate")
         .description("Perform arithmetic operations")
         .schema_value(json!({
             "type": "object",

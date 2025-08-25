@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Example 4: Tool usage
-    let calculator_tool = Tool::new("calculator")
+    let calculator_tool = Tool::builder("calculator")
         .description("Perform mathematical calculations")
         .schema_value(serde_json::json!({
             "type": "object",

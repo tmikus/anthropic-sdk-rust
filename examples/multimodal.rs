@@ -125,7 +125,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
                 format.clone(),
                 test_image_base64.to_string(),
             ))
-            .user_message(ContentBlock::text(&format!(
+            .user_message(ContentBlock::text(format!(
                 "This image is in {} format. Can you confirm you can see it?",
                 description
             )))
@@ -165,7 +165,11 @@ fn load_image_as_base64(
 /// Helper function to determine image media type from file extension
 #[allow(dead_code)]
 fn get_media_type_from_extension(file_path: &str) -> ImageMediaType {
-    let extension = file_path.split('.').last().unwrap_or("").to_lowercase();
+    let extension = file_path
+        .split('.')
+        .next_back()
+        .unwrap_or("")
+        .to_lowercase();
     match extension.as_str() {
         "jpg" | "jpeg" => ImageMediaType::Jpeg,
         "png" => ImageMediaType::Png,

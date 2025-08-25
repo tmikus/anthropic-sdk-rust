@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("1. Simple Calculator Tool");
     println!("========================");
 
-    let calculator_tool = Tool::new("calculate")
+    let calculator_tool = Tool::builder("calculate")
         .description("Perform basic arithmetic calculations")
         .schema_value(json!({
             "type": "object",
@@ -115,7 +115,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n2. Weather Tool with Error Handling");
     println!("==================================");
 
-    let weather_tool = Tool::new("get_weather")
+    let weather_tool = Tool::builder("get_weather")
         .description("Get current weather information for a location")
         .schema_value(json!({
             "type": "object",
@@ -174,7 +174,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n3. Multiple Tools Workflow");
     println!("=========================");
 
-    let search_tool = Tool::new("web_search")
+    let search_tool = Tool::builder("web_search")
         .description("Search the web for information")
         .schema_value(json!({
             "type": "object",
@@ -193,7 +193,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))
         .build();
 
-    let summarize_tool = Tool::new("summarize_text")
+    let summarize_tool = Tool::builder("summarize_text")
         .description("Summarize a piece of text")
         .schema_value(json!({
             "type": "object",
@@ -259,7 +259,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n4. Complex Tool Schema - File Operations");
     println!("=======================================");
 
-    let file_tool = Tool::new("file_operations")
+    let file_tool = Tool::builder("file_operations")
         .description("Perform file system operations")
         .schema_value(json!({
             "type": "object",
@@ -332,7 +332,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n5. Tool Error Handling");
     println!("=====================");
 
-    let api_tool = Tool::new("api_call")
+    let api_tool = Tool::builder("api_call")
         .description("Make API calls to external services")
         .schema_value(json!({
             "type": "object",

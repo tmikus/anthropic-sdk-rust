@@ -118,7 +118,7 @@ async fn test_chat_request_with_system_and_tools() {
 
     let client = create_mock_client(&mock_server).await;
 
-    let calculator_tool = Tool::new("calculator")
+    let calculator_tool = Tool::builder("calculator")
         .description("Perform arithmetic operations")
         .schema_value(json!({
             "type": "object",
@@ -406,7 +406,7 @@ async fn test_timeout_handling() {
         .and(path("/v1/messages"))
         .respond_with(
             ResponseTemplate::new(200)
-                .set_body_json(&json!({"id": "msg_slow"}))
+                .set_body_json(json!({"id": "msg_slow"}))
                 .set_delay(Duration::from_secs(2)), // Longer than client timeout
         )
         .mount(&mock_server)

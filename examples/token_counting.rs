@@ -101,7 +101,7 @@ async fn main() -> Result<()> {
     println!("\n=== Example 4: Message with Tools ===");
 
     // Create a simple calculator tool
-    let calculator_tool = anthropic_rust::tools::Tool::new("calculator")
+    let calculator_tool = anthropic_rust::tools::Tool::builder("calculator")
         .description("A simple calculator that can perform basic arithmetic operations")
         .schema_value(serde_json::json!({
             "type": "object",

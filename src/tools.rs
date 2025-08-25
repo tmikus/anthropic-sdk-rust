@@ -16,7 +16,7 @@ pub struct Tool {
 
 impl Tool {
     /// Create a new tool builder
-    pub fn new(name: impl Into<String>) -> ToolBuilder {
+    pub fn builder(name: impl Into<String>) -> ToolBuilder {
         ToolBuilder::new(name)
     }
 }
@@ -157,10 +157,12 @@ impl ToolBuilder {
 #[macro_export]
 macro_rules! tool {
     ($name:expr) => {
-        $crate::tools::Tool::new($name).build()
+        $crate::tools::Tool::builder($name).build()
     };
     ($name:expr, $desc:expr) => {
-        $crate::tools::Tool::new($name).description($desc).build()
+        $crate::tools::Tool::builder($name)
+            .description($desc)
+            .build()
     };
 }
 
@@ -171,7 +173,7 @@ macro_rules! tool {
 #[macro_export]
 macro_rules! tool_with_schema {
     ($name:expr, $desc:expr, $schema_type:ty) => {
-        $crate::tools::Tool::new($name)
+        $crate::tools::Tool::builder($name)
             .description($desc)
             .schema::<$schema_type>()
             .build()
@@ -185,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_tool_creation_basic() {
-        let tool = Tool::new("calculator").build();
+        let tool = Tool::builder("calculator").build();
 
         assert_eq!(tool.name, "calculator");
         assert_eq!(tool.description, None);
@@ -196,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_tool_creation_with_description() {
-        let tool = Tool::new("calculator")
+        let tool = Tool::builder("calculator")
             .description("A simple calculator tool")
             .build();
 
@@ -228,7 +230,7 @@ mod tests {
             "required": ["operation", "a", "b"]
         });
 
-        let tool = Tool::new("calculator")
+        let tool = Tool::builder("calculator")
             .description("A calculator tool")
             .schema_value(schema.clone())
             .build();
@@ -240,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_tool_builder_with_properties() {
-        let tool = Tool::new("calculator")
+        let tool = Tool::builder("calculator")
             .description("A calculator tool")
             .property(
                 "operation",
@@ -283,7 +285,7 @@ mod tests {
 
     #[test]
     fn test_tool_serialization() {
-        let tool = Tool::new("calculator")
+        let tool = Tool::builder("calculator")
             .description("A calculator tool")
             .property(
                 "operation",
@@ -370,7 +372,7 @@ mod tests {
             precision: Option<u32>,
         }
 
-        let tool = Tool::new("calculator")
+        let tool = Tool::builder("calculator")
             .description("A calculator tool")
             .schema::<CalculatorInput>()
             .build();
@@ -419,7 +421,7 @@ mod tests {
 
     #[test]
     fn test_tool_builder_property_without_description() {
-        let tool = Tool::new("simple_tool")
+        let tool = Tool::builder("simple_tool")
             .property("param1", "string", None::<String>, true)
             .property("param2", "number", None::<String>, false)
             .build();
@@ -441,7 +443,7 @@ mod tests {
 
     #[test]
     fn test_tool_builder_overwrite_schema() {
-        let tool = Tool::new("test_tool")
+        let tool = Tool::builder("test_tool")
             .property("initial", "string", None::<String>, true)
             .schema_value(json!({
                 "type": "object",
@@ -468,7 +470,7 @@ mod tests {
 
     #[test]
     fn test_tool_builder_add_property_to_custom_schema() {
-        let tool = Tool::new("test_tool")
+        let tool = Tool::builder("test_tool")
             .schema_value(json!({
                 "type": "object",
                 "properties": {
@@ -496,7 +498,7 @@ mod tests {
 
     #[test]
     fn test_tool_builder_duplicate_required_property() {
-        let tool = Tool::new("test_tool")
+        let tool = Tool::builder("test_tool")
             .property("param", "string", None::<String>, true)
             .property("param", "number", Some("Updated param"), true) // Same name, should update
             .build();

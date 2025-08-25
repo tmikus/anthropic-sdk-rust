@@ -1125,11 +1125,13 @@ mod tests {
     fn test_chat_request_builder_multiple_tools() {
         use crate::tools::Tool;
 
-        let tool1 = Tool::new("calculator")
+        let tool1 = Tool::builder("calculator")
             .description("A calculator tool")
             .build();
-        let tool2 = Tool::new("weather").description("A weather tool").build();
-        let tool3 = Tool::new("search").build();
+        let tool2 = Tool::builder("weather")
+            .description("A weather tool")
+            .build();
+        let tool3 = Tool::builder("search").build();
 
         let request = ChatRequestBuilder::new()
             .tool(tool1.clone())
@@ -1256,7 +1258,7 @@ mod tests {
     fn test_chat_request_builder_with_tool_use() {
         use crate::tools::Tool;
 
-        let calculator_tool = Tool::new("calculator")
+        let calculator_tool = Tool::builder("calculator")
             .description("Perform mathematical calculations")
             .schema_value(serde_json::json!({
                 "type": "object",

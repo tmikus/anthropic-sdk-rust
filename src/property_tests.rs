@@ -5,7 +5,6 @@ mod tests {
     use crate::types::*;
     use crate::Tool;
     use proptest::prelude::*;
-    use serde_json;
 
     // Property test strategies for generating test data
     prop_compose! {

@@ -7,7 +7,6 @@ mod tests {
         types::{ContentBlock, Model, Role, StopReason, Usage},
     };
     use futures::{stream, StreamExt};
-    use serde_json;
 
     #[test]
     fn test_stream_event_serialization() {

@@ -395,11 +395,7 @@ mod tests {
             ErrorCategory::Request
         );
         assert_eq!(
-            Error::Serialization(serde_json::Error::io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "test"
-            )))
-            .category(),
+            Error::Serialization(serde_json::Error::io(std::io::Error::other("test"))).category(),
             ErrorCategory::Processing
         );
         assert_eq!(

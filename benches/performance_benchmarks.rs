@@ -5,7 +5,6 @@ use anthropic_rust::{
     Client, ContentBlock, MessageParam, Model, Role, Tool,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use serde_json;
 use std::time::Duration;
 
 // Benchmark data generation helpers
@@ -101,7 +100,7 @@ fn create_chat_request(messages: usize) -> ChatRequest {
             message_type: "text".to_string(),
             text: "You are a helpful assistant for benchmarking.".to_string(),
         }]),
-        tools: Some(vec![Tool::new("calculator")
+        tools: Some(vec![Tool::builder("calculator")
             .description("Perform calculations")
             .schema_value(serde_json::json!({
                 "type": "object",
@@ -338,14 +337,14 @@ fn bench_tool_creation(c: &mut Criterion) {
 
     group.bench_function("simple_tool", |b| {
         b.iter(|| {
-            let tool = Tool::new(black_box("calculator")).build();
+            let tool = Tool::builder(black_box("calculator")).build();
             black_box(tool);
         })
     });
 
     group.bench_function("complex_tool", |b| {
         b.iter(|| {
-            let tool = Tool::new(black_box("calculator"))
+            let tool = Tool::builder(black_box("calculator"))
                 .description(black_box("Perform arithmetic operations"))
                 .schema_value(black_box(serde_json::json!({
                     "type": "object",

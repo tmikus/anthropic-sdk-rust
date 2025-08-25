@@ -5,7 +5,6 @@ mod tests {
     use crate::types::*;
     use crate::Tool;
     use pretty_assertions::assert_eq;
-    use serde_json;
 
     #[test]
     fn test_model_serialization() {

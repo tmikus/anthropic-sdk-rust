@@ -145,25 +145,13 @@ pub trait RequestInterceptor: Send + Sync + std::fmt::Debug {
 }
 
 /// Built-in logging interceptor
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct LoggingInterceptor {
     pub log_requests: bool,
     pub log_responses: bool,
     pub log_headers: bool,
     pub log_body: bool,
     pub log_errors: bool,
-}
-
-impl Default for LoggingInterceptor {
-    fn default() -> Self {
-        Self {
-            log_requests: false,
-            log_responses: false,
-            log_headers: false,
-            log_body: false,
-            log_errors: false,
-        }
-    }
 }
 
 impl LoggingInterceptor {
@@ -263,6 +251,7 @@ pub struct RequestMiddleware {
     pub interceptors: Vec<Arc<dyn RequestInterceptor>>,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for RequestMiddleware {
     fn default() -> Self {
         Self {

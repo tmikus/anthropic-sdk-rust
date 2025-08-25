@@ -877,7 +877,7 @@ mod tests {
         use serde_json;
 
         // Create a simple tool for testing
-        let tool = Tool::new("calculator")
+        let tool = Tool::builder("calculator")
             .description("A simple calculator")
             .schema_value(serde_json::json!({
                 "type": "object",
@@ -1006,15 +1006,16 @@ mod tests {
         use crate::types::{ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage};
 
         // Test building a CountTokensRequest manually (no builder pattern exists yet)
-        let mut messages = Vec::new();
-        messages.push(MessageParam {
-            role: Role::User,
-            content: vec![ContentBlock::text("First message")],
-        });
-        messages.push(MessageParam {
-            role: Role::Assistant,
-            content: vec![ContentBlock::text("Response message")],
-        });
+        let messages = vec![
+            MessageParam {
+                role: Role::User,
+                content: vec![ContentBlock::text("First message")],
+            },
+            MessageParam {
+                role: Role::Assistant,
+                content: vec![ContentBlock::text("Response message")],
+            },
+        ];
 
         let system = Some(vec![SystemMessage {
             message_type: "text".to_string(),
@@ -1071,7 +1072,7 @@ mod tests {
         use crate::tools::Tool;
         use crate::types::{ChatRequest, ContentBlock, CountTokensRequest, MessageParam, Role};
 
-        let tool = Tool::new("test_tool")
+        let tool = Tool::builder("test_tool")
             .description("A test tool")
             .schema_value(serde_json::json!({"type": "object"}))
             .build();

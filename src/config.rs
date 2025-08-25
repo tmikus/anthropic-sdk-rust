@@ -189,10 +189,8 @@ impl ClientBuilder {
 
     /// Build the client
     pub fn build(self) -> Result<Client> {
-        let mut config = Config::default();
-
         // Set API key from builder or environment variables
-        config.api_key = self
+        let api_key = self
             .api_key
             .or_else(|| std::env::var("ANTHROPIC_API_KEY").ok())
             .or_else(|| std::env::var("CLAUDE_API_KEY").ok()) // Alternative env var
@@ -201,6 +199,11 @@ impl ClientBuilder {
                     "API key not provided. Set via builder.api_key() or environment variables ANTHROPIC_API_KEY or CLAUDE_API_KEY".to_string(),
                 )
             })?;
+
+        let mut config = Config {
+            api_key,
+            ..Default::default()
+        };
 
         // Set base URL from builder or environment variables
         if let Some(base_url) = self.base_url {
