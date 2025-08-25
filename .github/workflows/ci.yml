@@ -150,7 +150,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Rust
-      uses: dtolnay/rust-toolchain@nightly
+      uses: dtolnay/rust-toolchain@stable
 
     - name: Install cargo-minimal-versions
       run: cargo install cargo-minimal-versions
@@ -193,7 +193,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust 1.89 
+    - name: Install Rust 1.89
       uses: dtolnay/rust-toolchain@master
       with:
         toolchain: 1.89.0
@@ -262,7 +262,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Rust
-      uses: dtolnay/rust-toolchain@nightly
+      uses: dtolnay/rust-toolchain@stable
       with:
         components: rust-src
 
