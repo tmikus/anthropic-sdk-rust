@@ -2,7 +2,7 @@
 name = "anthropic_rust"
 version = "0.1.1"
 edition = "2021"
-rust-version = "1.70"
+rust-version = "1.89"
 authors = ["Tomasz Mikus <hi@tomaszmik.us>"]
 description = "A modern, type-safe Rust SDK for the Anthropic API, providing async-first access to Claude models with comprehensive error handling and streaming support."
 license = "MIT"
