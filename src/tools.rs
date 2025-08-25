@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 
 /// Tool definition for function calling
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Tool {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]

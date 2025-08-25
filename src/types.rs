@@ -141,7 +141,7 @@ pub enum StopReason {
 /// let total_tokens = usage.input_tokens + usage.output_tokens;
 /// println!("Total tokens used: {}", total_tokens);
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Usage {
     /// Number of input tokens (from your messages)
     pub input_tokens: u32,
@@ -156,7 +156,7 @@ pub struct Usage {
 }
 
 /// Content block types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ContentBlock {
     Text {
@@ -256,7 +256,7 @@ impl ContentBlock {
 }
 
 /// Image source types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ImageSource {
     Base64 {
@@ -269,7 +269,7 @@ pub enum ImageSource {
 }
 
 /// Document source types
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum DocumentSource {
     Base64 {
@@ -312,14 +312,14 @@ pub struct Citation {
 }
 
 /// Message parameter for requests
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MessageParam {
     pub role: Role,
     pub content: Vec<ContentBlock>,
 }
 
 /// Complete message response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Message {
     pub id: String,
     pub role: Role,
@@ -331,7 +331,7 @@ pub struct Message {
 }
 
 /// System message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SystemMessage {
     #[serde(rename = "type")]
     pub message_type: String,
@@ -339,7 +339,7 @@ pub struct SystemMessage {
 }
 
 /// Chat request structure
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ChatRequest {
     pub messages: Vec<MessageParam>,
     #[serde(skip_serializing_if = "Option::is_none")]

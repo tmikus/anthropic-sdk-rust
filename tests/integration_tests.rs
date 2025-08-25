@@ -20,7 +20,7 @@ use std::time::Duration;
 async fn test_client_creation() {
     // Test builder pattern
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .max_tokens(1000)
         .timeout(Duration::from_secs(30))
@@ -37,7 +37,7 @@ async fn test_client_creation() {
 #[tokio::test]
 async fn test_chat_request_building() {
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .build()
         .unwrap();
@@ -165,7 +165,7 @@ async fn test_tool_definition() {
 
     // Test tool in request
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .build()
         .unwrap();
@@ -192,7 +192,7 @@ async fn test_error_handling() {
 
     // Test client with invalid configuration
     let client = Client::builder()
-        .api_key("invalid-key")
+        .api_key("sk-ant-api03-invalid-key")
         .model(Model::Claude35Sonnet20241022)
         .build()
         .unwrap();
@@ -244,7 +244,7 @@ async fn test_model_capabilities() {
 #[tokio::test]
 async fn test_token_counting() {
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .build()
         .unwrap();
@@ -269,7 +269,7 @@ async fn test_token_counting() {
 #[tokio::test]
 async fn test_concurrent_requests() {
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .build()
         .unwrap();
@@ -300,7 +300,7 @@ async fn test_concurrent_requests() {
 #[tokio::test]
 async fn test_streaming_setup() {
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .build()
         .unwrap();
@@ -318,7 +318,7 @@ async fn test_streaming_setup() {
 #[tokio::test]
 async fn test_multimodal_integration() {
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .build()
         .unwrap();
@@ -356,7 +356,7 @@ async fn test_multimodal_integration() {
 async fn test_configuration_validation() {
     // Test timeout configuration
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .timeout(Duration::from_secs(60))
         .build();
@@ -365,7 +365,7 @@ async fn test_configuration_validation() {
 
     // Test max_tokens configuration
     let client = Client::builder()
-        .api_key("test-key")
+        .api_key("sk-ant-api03-test-key")
         .model(Model::Claude35Sonnet20241022)
         .max_tokens(4000)
         .build()
@@ -386,7 +386,7 @@ async fn test_configuration_validation() {
 /// Helper function to create a test client for examples
 fn create_test_client() -> Client {
     Client::builder()
-        .api_key("test-key-for-examples")
+        .api_key("sk-ant-api03-test-key-for-examples")
         .model(Model::Claude35Sonnet20241022)
         .max_tokens(1000)
         .build()
@@ -466,7 +466,7 @@ async fn example_error_handling_patterns() {
             // Handle authentication errors
             println!("Auth error: {}", msg);
         }
-        Err(Error::RateLimit { retry_after }) => {
+        Err(Error::RateLimit { retry_after, .. }) => {
             // Handle rate limiting
             println!("Rate limited, retry after: {:?}", retry_after);
         }

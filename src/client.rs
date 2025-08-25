@@ -530,6 +530,7 @@ impl ClientInner {
     }
 
     /// Execute a streaming HTTP request and return a MessageStream
+    #[allow(dead_code)]
     pub async fn execute_streaming_request(
         &self,
         path: &str,

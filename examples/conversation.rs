@@ -333,7 +333,7 @@ fn _print_conversation_history(history: &[MessageParam]) {
             } else { 
                 text.clone() 
             };
-            println!("   {}. {} {}: {}", i + 1, role_emoji, message.role, preview);
+            println!("   {}. {} {:?}: {}", i + 1, role_emoji, message.role, preview);
         }
     }
     println!();

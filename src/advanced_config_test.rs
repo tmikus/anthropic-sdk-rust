@@ -32,6 +32,7 @@ impl MockInterceptor {
         self.before_request_calls.lock().unwrap().clone()
     }
 
+    #[allow(dead_code)]
     fn get_after_response_calls(&self) -> Vec<String> {
         self.after_response_calls.lock().unwrap().clone()
     }

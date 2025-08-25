@@ -1,0 +1,56 @@
+[report]
+# Output formats for coverage reports
+out = ["Html", "Xml", "Lcov"]
+
+[coverage]
+# Minimum coverage threshold (90%)
+fail-under = 90.0
+
+# Include all source files
+include-tests = false
+count = true
+all-features = true
+workspace = true
+
+# Exclude certain files/patterns from coverage
+exclude = [
+    "*/tests/*",
+    "*/benches/*",
+    "*/examples/*",
+    "*_test.rs",
+    "*/target/*",
+]
+
+# Exclude lines with these patterns
+exclude-lines = [
+    "#\\[derive\\(",
+    "unreachable!",
+    "unimplemented!",
+    "panic!",
+    "todo!",
+    "#\\[cfg\\(test\\)\\]",
+]
+
+# Run specific test types
+run-types = ["Tests", "Doctests"]
+
+# Timeout for tests (2 minutes)
+timeout = 120
+
+# Follow symbolic links
+follow-exec = true
+
+# Post-test delay
+post-test-delay = 0
+
+# Verbose output
+verbose = true
+
+# Forward signals to child processes
+forward-signals = true
+
+# Ignore panics in tests
+ignore-panics = false
+
+# Include all dependencies in coverage
+include-all-sources = false

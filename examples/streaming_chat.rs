@@ -123,19 +123,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match client.stream_chat(accumulator_request).await {
         Ok(stream) => {
-            let mut accumulator = MessageAccumulator::new();
-            let mut event_count = 0;
-
-            let stream_with_accumulator = stream.map(|event_result| {
-                event_count += 1;
-                if event_count % 10 == 0 {
-                    print!(".");
-                    io::stdout().flush().unwrap();
-                }
-                event_result
-            });
-
-            match accumulator.accumulate_stream(stream_with_accumulator).await {
+            let accumulator = MessageAccumulator::new(stream);
+            match accumulator.accumulate().await {
                 Ok(final_message) => {
                     println!("\n✅ Accumulation complete!");
                     println!("📨 Message ID: {}", final_message.id);
@@ -154,11 +143,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     }
                     
-                    if let Some(usage) = final_message.usage {
-                        println!("📊 Final usage: {} input + {} output = {} total tokens",
-                                 usage.input_tokens, usage.output_tokens,
-                                 usage.input_tokens + usage.output_tokens);
-                    }
+                    let usage = final_message.usage;
+                    println!("📊 Final usage: {} input + {} output = {} total tokens",
+                             usage.input_tokens, usage.output_tokens,
+                             usage.input_tokens + usage.output_tokens);
                 }
                 Err(e) => println!("❌ Accumulation failed: {}", e),
             }

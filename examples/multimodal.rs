@@ -16,7 +16,7 @@ use anthropic::{
 };
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
     
     println!("=== Anthropic Rust SDK - Multimodal Examples ===\n");
@@ -137,7 +137,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Helper function to load and encode an image file (for reference)
 #[allow(dead_code)]
-fn load_image_as_base64(file_path: &str) -> Result<String, Box<dyn std::error::Error>> {
+fn load_image_as_base64(file_path: &str) -> std::result::Result<String, Box<dyn std::error::Error>> {
     let image_bytes = std::fs::read(file_path)?;
     Ok(base64::encode(&image_bytes))
 }

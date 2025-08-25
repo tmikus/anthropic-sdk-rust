@@ -30,6 +30,16 @@ pub mod streaming;
 pub mod tools;
 pub mod types;
 
+// Test modules
+#[cfg(test)]
+mod types_test;
+#[cfg(test)]
+mod error_test;
+#[cfg(test)]
+mod config_test;
+#[cfg(test)]
+mod property_tests;
+
 #[cfg(test)]
 mod client_test;
 #[cfg(test)]
