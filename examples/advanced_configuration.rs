@@ -10,8 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anthropic_rust::{
-    ClientBuilder, ContentBlock, LoggingInterceptor, Model, RequestInterceptor,
-    RetryConfig, Result,
+    ClientBuilder, ContentBlock, LoggingInterceptor, Model, RequestInterceptor, Result, RetryConfig,
 };
 
 /// Custom interceptor that tracks request metrics
@@ -43,14 +42,24 @@ impl RequestInterceptor for MetricsInterceptor {
     fn before_request(&self, request: &reqwest::Request) -> Result<()> {
         let mut count = self.request_count.lock().unwrap();
         *count += 1;
-        println!("📊 Request #{}: {} {}", *count, request.method(), request.url());
+        println!(
+            "📊 Request #{}: {} {}",
+            *count,
+            request.method(),
+            request.url()
+        );
         Ok(())
     }
 
     fn after_response(&self, response: &reqwest::Response) -> Result<()> {
         let mut count = self.response_count.lock().unwrap();
         *count += 1;
-        println!("📊 Response #{}: {} {}", *count, response.status(), response.url());
+        println!(
+            "📊 Response #{}: {} {}",
+            *count,
+            response.status(),
+            response.url()
+        );
         Ok(())
     }
 
@@ -72,7 +81,9 @@ async fn main() -> Result<()> {
         .timeout(Duration::from_secs(30))
         .user_agent("anthropic-rust-sdk-example/1.0")
         .build()
-        .map_err(|e| anthropic_rust::Error::Config(format!("Failed to build HTTP client: {}", e)))?;
+        .map_err(|e| {
+            anthropic_rust::Error::Config(format!("Failed to build HTTP client: {}", e))
+        })?;
 
     // Example 2: Custom Retry Configuration
     println!("2️⃣ Custom Retry Configuration");
@@ -111,7 +122,7 @@ async fn main() -> Result<()> {
 
             // Example 5: Per-request timeout overrides
             println!("\n5️⃣ Per-request Timeout Overrides");
-            
+
             let request = client
                 .chat_builder()
                 .user_message(ContentBlock::text("Hello, Claude!"))

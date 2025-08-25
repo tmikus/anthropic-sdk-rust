@@ -526,19 +526,22 @@ mod tests {
     fn test_role_serialization() {
         let user_role = Role::User;
         let assistant_role = Role::Assistant;
-        
+
         assert_eq!(serde_json::to_string(&user_role).unwrap(), "\"user\"");
-        assert_eq!(serde_json::to_string(&assistant_role).unwrap(), "\"assistant\"");
+        assert_eq!(
+            serde_json::to_string(&assistant_role).unwrap(),
+            "\"assistant\""
+        );
     }
 
     #[test]
     fn test_role_deserialization() {
         let user_json = "\"user\"";
         let assistant_json = "\"assistant\"";
-        
+
         let user_role: Role = serde_json::from_str(user_json).unwrap();
         let assistant_role: Role = serde_json::from_str(assistant_json).unwrap();
-        
+
         assert_eq!(user_role, Role::User);
         assert_eq!(assistant_role, Role::Assistant);
     }
@@ -584,7 +587,7 @@ mod tests {
 
         let json = serde_json::to_string(&usage).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["input_tokens"], 100);
         assert_eq!(parsed["output_tokens"], 50);
         assert_eq!(parsed["cache_creation_input_tokens"], 10);
@@ -615,7 +618,7 @@ mod tests {
 
         let json = serde_json::to_string(&text_block).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "text");
         assert_eq!(parsed["text"], "Hello, world!");
         assert!(parsed.get("citations").is_none());
@@ -636,7 +639,7 @@ mod tests {
 
         let json = serde_json::to_string(&text_block).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "text");
         assert_eq!(parsed["text"], "Hello, world!");
         assert!(parsed["citations"].is_array());
@@ -656,7 +659,7 @@ mod tests {
 
         let json = serde_json::to_string(&image_block).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "image");
         assert_eq!(parsed["source"]["type"], "base64");
         assert_eq!(parsed["source"]["media_type"], "image/png");
@@ -673,7 +676,7 @@ mod tests {
 
         let json = serde_json::to_string(&tool_use_block).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "tool_use");
         assert_eq!(parsed["id"], "tool_123");
         assert_eq!(parsed["name"], "calculator");
@@ -692,7 +695,7 @@ mod tests {
 
         let json = serde_json::to_string(&tool_result_block).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "tool_result");
         assert_eq!(parsed["tool_use_id"], "tool_123");
         assert_eq!(parsed["content"][0]["type"], "text");
@@ -754,7 +757,7 @@ mod tests {
 
         let json = serde_json::to_string(&message_param).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["role"], "user");
         assert_eq!(parsed["content"][0]["type"], "text");
         assert_eq!(parsed["content"][0]["text"], "Hello!");
@@ -786,7 +789,7 @@ mod tests {
         assert_eq!(message.stop_reason, Some(StopReason::EndTurn));
         assert_eq!(message.usage.input_tokens, 10);
         assert_eq!(message.usage.output_tokens, 5);
-        
+
         match &message.content[0] {
             ContentBlock::Text { text, .. } => assert_eq!(text, "Hello there!"),
             _ => panic!("Expected text content block"),
@@ -802,7 +805,7 @@ mod tests {
 
         let json = serde_json::to_string(&system_msg).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "text");
         assert_eq!(parsed["text"], "You are a helpful assistant.");
     }
@@ -826,7 +829,7 @@ mod tests {
 
         let json = serde_json::to_string(&chat_request).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["messages"][0]["role"], "user");
         assert_eq!(parsed["system"][0]["text"], "Be helpful.");
         assert_eq!(parsed["temperature"], 0.7);
@@ -848,9 +851,12 @@ mod tests {
 
         let json = serde_json::to_string(&count_request).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["messages"][0]["role"], "user");
-        assert_eq!(parsed["messages"][0]["content"][0]["text"], "Count my tokens!");
+        assert_eq!(
+            parsed["messages"][0]["content"][0]["text"],
+            "Count my tokens!"
+        );
         assert!(parsed.get("system").is_none());
         assert!(parsed.get("tools").is_none());
     }
@@ -874,11 +880,14 @@ mod tests {
 
         // Test From trait implementation
         let count_request = CountTokensRequest::from(chat_request.clone());
-        
+
         assert_eq!(count_request.messages.len(), 1);
         assert_eq!(count_request.messages[0].role, Role::User);
         assert!(count_request.system.is_some());
-        assert_eq!(count_request.system.as_ref().unwrap()[0].text, "System message");
+        assert_eq!(
+            count_request.system.as_ref().unwrap()[0].text,
+            "System message"
+        );
         assert!(count_request.tools.is_none());
 
         // Test that temperature, top_p, and stop_sequences are not included
@@ -968,7 +977,8 @@ mod tests {
         }
 
         // Test tool use constructor
-        let tool_block = ContentBlock::tool_use("id123", "calculator", serde_json::json!({"a": 1})).unwrap();
+        let tool_block =
+            ContentBlock::tool_use("id123", "calculator", serde_json::json!({"a": 1})).unwrap();
         match tool_block {
             ContentBlock::ToolUse { id, name, input } => {
                 assert_eq!(id, "id123");
@@ -981,7 +991,11 @@ mod tests {
         // Test tool result constructor
         let result_block = ContentBlock::tool_result("id123", "Result: 42");
         match result_block {
-            ContentBlock::ToolResult { tool_use_id, content, is_error } => {
+            ContentBlock::ToolResult {
+                tool_use_id,
+                content,
+                is_error,
+            } => {
                 assert_eq!(tool_use_id, "id123");
                 assert_eq!(is_error, None);
                 match &content[0] {
@@ -1040,14 +1054,14 @@ mod tests {
         assert_eq!(request.messages.len(), 1);
         assert_eq!(request.messages[0].role, Role::User);
         assert_eq!(request.messages[0].content.len(), 2);
-        
+
         match &request.messages[0].content[0] {
             ContentBlock::Text { text, .. } => assert_eq!(text, "Hello!"),
             _ => panic!("Expected text content block"),
         }
-        
+
         match &request.messages[0].content[1] {
-            ContentBlock::Image { .. } => {},
+            ContentBlock::Image { .. } => {}
             _ => panic!("Expected image content block"),
         }
     }
@@ -1074,12 +1088,12 @@ mod tests {
         assert_eq!(request.messages[0].role, Role::User);
         assert_eq!(request.messages[1].role, Role::Assistant);
         assert_eq!(request.messages[2].role, Role::User);
-        
+
         match &request.messages[0].content[0] {
             ContentBlock::Text { text, .. } => assert_eq!(text, "First message"),
             _ => panic!("Expected text content block"),
         }
-        
+
         match &request.messages[2].content[0] {
             ContentBlock::Text { text, .. } => assert_eq!(text, "Third message"),
             _ => panic!("Expected text content block"),
@@ -1097,15 +1111,23 @@ mod tests {
         assert_eq!(request.messages.len(), 1);
         assert!(request.system.is_some());
         assert_eq!(request.system.as_ref().unwrap().len(), 2);
-        assert_eq!(request.system.as_ref().unwrap()[0].text, "First system message");
-        assert_eq!(request.system.as_ref().unwrap()[1].text, "Second system message");
+        assert_eq!(
+            request.system.as_ref().unwrap()[0].text,
+            "First system message"
+        );
+        assert_eq!(
+            request.system.as_ref().unwrap()[1].text,
+            "Second system message"
+        );
     }
 
     #[test]
     fn test_chat_request_builder_multiple_tools() {
         use crate::tools::Tool;
-        
-        let tool1 = Tool::new("calculator").description("A calculator tool").build();
+
+        let tool1 = Tool::new("calculator")
+            .description("A calculator tool")
+            .build();
         let tool2 = Tool::new("weather").description("A weather tool").build();
         let tool3 = Tool::new("search").build();
 
@@ -1201,28 +1223,31 @@ mod tests {
     fn test_chat_request_builder_with_multimodal_content() {
         let request = ChatRequestBuilder::new()
             .user_message(ContentBlock::text("What's in this image?"))
-            .message_with_content(Role::User, vec![
-                ContentBlock::text("Please analyze this document:"),
-                ContentBlock::document_base64(DocumentMediaType::Pdf, "pdf_data"),
-                ContentBlock::image_url("https://example.com/image.jpg").unwrap(),
-            ])
+            .message_with_content(
+                Role::User,
+                vec![
+                    ContentBlock::text("Please analyze this document:"),
+                    ContentBlock::document_base64(DocumentMediaType::Pdf, "pdf_data"),
+                    ContentBlock::image_url("https://example.com/image.jpg").unwrap(),
+                ],
+            )
             .build();
 
         assert_eq!(request.messages.len(), 2);
         assert_eq!(request.messages[1].content.len(), 3);
-        
+
         match &request.messages[1].content[0] {
             ContentBlock::Text { text, .. } => assert_eq!(text, "Please analyze this document:"),
             _ => panic!("Expected text content block"),
         }
-        
+
         match &request.messages[1].content[1] {
-            ContentBlock::Document { .. } => {},
+            ContentBlock::Document { .. } => {}
             _ => panic!("Expected document content block"),
         }
-        
+
         match &request.messages[1].content[2] {
-            ContentBlock::Image { .. } => {},
+            ContentBlock::Image { .. } => {}
             _ => panic!("Expected image content block"),
         }
     }
@@ -1230,7 +1255,7 @@ mod tests {
     #[test]
     fn test_chat_request_builder_with_tool_use() {
         use crate::tools::Tool;
-        
+
         let calculator_tool = Tool::new("calculator")
             .description("Perform mathematical calculations")
             .schema_value(serde_json::json!({
@@ -1248,8 +1273,9 @@ mod tests {
         let tool_use_content = ContentBlock::tool_use(
             "tool_123",
             "calculator",
-            serde_json::json!({"expression": "2 + 2"})
-        ).unwrap();
+            serde_json::json!({"expression": "2 + 2"}),
+        )
+        .unwrap();
 
         let tool_result_content = ContentBlock::tool_result("tool_123", "4");
 
@@ -1264,21 +1290,21 @@ mod tests {
         assert!(request.tools.is_some());
         assert_eq!(request.tools.as_ref().unwrap().len(), 1);
         assert_eq!(request.tools.as_ref().unwrap()[0].name, "calculator");
-        
+
         // Check tool use message
         match &request.messages[1].content[0] {
             ContentBlock::ToolUse { id, name, .. } => {
                 assert_eq!(id, "tool_123");
                 assert_eq!(name, "calculator");
-            },
+            }
             _ => panic!("Expected tool use content block"),
         }
-        
+
         // Check tool result message
         match &request.messages[2].content[0] {
             ContentBlock::ToolResult { tool_use_id, .. } => {
                 assert_eq!(tool_use_id, "tool_123");
-            },
+            }
             _ => panic!("Expected tool result content block"),
         }
     }
@@ -1299,7 +1325,7 @@ mod tests {
 
         let json = serde_json::to_string(&citation).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["start_index"], 10);
         assert_eq!(parsed["end_index"], 20);
         assert_eq!(parsed["source"], "https://example.com");
@@ -1314,7 +1340,7 @@ mod tests {
 
         let json = serde_json::to_string(&doc_source).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "base64");
         assert_eq!(parsed["media_type"], "application/pdf");
         assert_eq!(parsed["data"], "pdf_data");
@@ -1328,7 +1354,7 @@ mod tests {
 
         let json = serde_json::to_string(&image_source).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "url");
         assert_eq!(parsed["url"], "https://example.com/image.jpg");
     }
@@ -1344,7 +1370,7 @@ mod tests {
 
         let json = serde_json::to_string(&doc_block).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "document");
         assert_eq!(parsed["source"]["type"], "base64");
         assert_eq!(parsed["source"]["media_type"], "application/pdf");
@@ -1361,7 +1387,7 @@ mod tests {
 
         let json = serde_json::to_string(&doc_block).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "document");
         assert_eq!(parsed["source"]["type"], "url");
         assert_eq!(parsed["source"]["url"], "https://example.com/doc.pdf");
@@ -1456,10 +1482,7 @@ mod tests {
 
     #[test]
     fn test_all_document_media_types() {
-        let media_types = vec![
-            DocumentMediaType::Pdf,
-            DocumentMediaType::Text,
-        ];
+        let media_types = vec![DocumentMediaType::Pdf, DocumentMediaType::Text];
 
         for media_type in media_types {
             let block = ContentBlock::document_base64(media_type.clone(), "test_data");
@@ -1485,7 +1508,7 @@ mod tests {
 
         let json = serde_json::to_string(&tool_result).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["type"], "tool_result");
         assert_eq!(parsed["tool_use_id"], "tool_123");
         assert_eq!(parsed["is_error"], true);
@@ -1506,7 +1529,7 @@ mod tests {
 
         let json = serde_json::to_string(&message_param).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["role"], "user");
         assert_eq!(parsed["content"].as_array().unwrap().len(), 3);
         assert_eq!(parsed["content"][0]["type"], "text");

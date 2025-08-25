@@ -4,8 +4,8 @@
 mod tests {
     use crate::types::*;
     use crate::Tool;
-    use serde_json;
     use pretty_assertions::assert_eq;
+    use serde_json;
 
     #[test]
     fn test_model_serialization() {
@@ -21,7 +21,7 @@ mod tests {
         for (model, expected_str) in test_cases {
             let serialized = serde_json::to_string(&model).unwrap();
             assert_eq!(serialized, format!("\"{}\"", expected_str));
-            
+
             let deserialized: Model = serde_json::from_str(&serialized).unwrap();
             assert_eq!(deserialized, model);
         }
@@ -43,7 +43,10 @@ mod tests {
         let assistant_role = Role::Assistant;
 
         assert_eq!(serde_json::to_string(&user_role).unwrap(), "\"user\"");
-        assert_eq!(serde_json::to_string(&assistant_role).unwrap(), "\"assistant\"");
+        assert_eq!(
+            serde_json::to_string(&assistant_role).unwrap(),
+            "\"assistant\""
+        );
 
         let user_deserialized: Role = serde_json::from_str("\"user\"").unwrap();
         let assistant_deserialized: Role = serde_json::from_str("\"assistant\"").unwrap();
@@ -64,7 +67,7 @@ mod tests {
         for (stop_reason, expected_str) in test_cases {
             let serialized = serde_json::to_string(&stop_reason).unwrap();
             assert_eq!(serialized, format!("\"{}\"", expected_str));
-            
+
             let deserialized: StopReason = serde_json::from_str(&serialized).unwrap();
             assert_eq!(deserialized, stop_reason);
         }
@@ -111,7 +114,7 @@ mod tests {
     #[test]
     fn test_content_block_text() {
         let text_block = ContentBlock::text("Hello, world!");
-        
+
         let serialized = serde_json::to_value(&text_block).unwrap();
         assert_eq!(serialized["type"], "text");
         assert_eq!(serialized["text"], "Hello, world!");
@@ -128,11 +131,8 @@ mod tests {
 
     #[test]
     fn test_content_block_image_base64() {
-        let image_block = ContentBlock::image_base64(
-            ImageMediaType::Png,
-            "base64data".to_string()
-        );
-        
+        let image_block = ContentBlock::image_base64(ImageMediaType::Png, "base64data".to_string());
+
         let serialized = serde_json::to_value(&image_block).unwrap();
         assert_eq!(serialized["type"], "image");
         assert_eq!(serialized["source"]["type"], "base64");
@@ -141,15 +141,13 @@ mod tests {
 
         let deserialized: ContentBlock = serde_json::from_value(serialized).unwrap();
         match deserialized {
-            ContentBlock::Image { source } => {
-                match source {
-                    ImageSource::Base64 { media_type, data } => {
-                        assert_eq!(media_type, ImageMediaType::Png);
-                        assert_eq!(data, "base64data");
-                    }
-                    _ => panic!("Expected base64 image source"),
+            ContentBlock::Image { source } => match source {
+                ImageSource::Base64 { media_type, data } => {
+                    assert_eq!(media_type, ImageMediaType::Png);
+                    assert_eq!(data, "base64data");
                 }
-            }
+                _ => panic!("Expected base64 image source"),
+            },
             _ => panic!("Expected image content block"),
         }
     }
@@ -157,7 +155,7 @@ mod tests {
     #[test]
     fn test_content_block_image_url() {
         let image_block = ContentBlock::image_url("https://example.com/image.jpg").unwrap();
-        
+
         let serialized = serde_json::to_value(&image_block).unwrap();
         assert_eq!(serialized["type"], "image");
         assert_eq!(serialized["source"]["type"], "url");
@@ -165,14 +163,12 @@ mod tests {
 
         let deserialized: ContentBlock = serde_json::from_value(serialized).unwrap();
         match deserialized {
-            ContentBlock::Image { source } => {
-                match source {
-                    ImageSource::Url { url } => {
-                        assert_eq!(url.as_str(), "https://example.com/image.jpg");
-                    }
-                    _ => panic!("Expected URL image source"),
+            ContentBlock::Image { source } => match source {
+                ImageSource::Url { url } => {
+                    assert_eq!(url.as_str(), "https://example.com/image.jpg");
                 }
-            }
+                _ => panic!("Expected URL image source"),
+            },
             _ => panic!("Expected image content block"),
         }
     }
@@ -185,8 +181,9 @@ mod tests {
             "b": 3
         });
 
-        let tool_block = ContentBlock::tool_use("tool-123", "calculator", tool_input.clone()).unwrap();
-        
+        let tool_block =
+            ContentBlock::tool_use("tool-123", "calculator", tool_input.clone()).unwrap();
+
         let serialized = serde_json::to_value(&tool_block).unwrap();
         assert_eq!(serialized["type"], "tool_use");
         assert_eq!(serialized["id"], "tool-123");
@@ -207,7 +204,7 @@ mod tests {
     #[test]
     fn test_content_block_tool_result() {
         let tool_result = ContentBlock::tool_result("tool-123", "The result is 8");
-        
+
         let serialized = serde_json::to_value(&tool_result).unwrap();
         assert_eq!(serialized["type"], "tool_result");
         assert_eq!(serialized["tool_use_id"], "tool-123");
@@ -217,7 +214,11 @@ mod tests {
 
         let deserialized: ContentBlock = serde_json::from_value(serialized).unwrap();
         match deserialized {
-            ContentBlock::ToolResult { tool_use_id, content, is_error } => {
+            ContentBlock::ToolResult {
+                tool_use_id,
+                content,
+                is_error,
+            } => {
                 assert_eq!(tool_use_id, "tool-123");
                 assert_eq!(content.len(), 1);
                 assert!(is_error.is_none());
@@ -242,7 +243,7 @@ mod tests {
         for (media_type, expected_str) in test_cases {
             let serialized = serde_json::to_string(&media_type).unwrap();
             assert_eq!(serialized, format!("\"{}\"", expected_str));
-            
+
             let deserialized: ImageMediaType = serde_json::from_str(&serialized).unwrap();
             assert_eq!(deserialized, media_type);
         }
@@ -400,7 +401,10 @@ mod tests {
 
         let deserialized: Tool = serde_json::from_value(serialized).unwrap();
         assert_eq!(deserialized.name, "calculator");
-        assert_eq!(deserialized.description, Some("Perform calculations".to_string()));
+        assert_eq!(
+            deserialized.description,
+            Some("Perform calculations".to_string())
+        );
     }
 
     #[test]
@@ -415,7 +419,9 @@ mod tests {
         // Test image base64 constructor
         let image_block = ContentBlock::image_base64(ImageMediaType::Jpeg, "data");
         match image_block {
-            ContentBlock::Image { source: ImageSource::Base64 { media_type, data } } => {
+            ContentBlock::Image {
+                source: ImageSource::Base64 { media_type, data },
+            } => {
                 assert_eq!(media_type, ImageMediaType::Jpeg);
                 assert_eq!(data, "data");
             }
@@ -425,7 +431,11 @@ mod tests {
         // Test tool result constructor
         let tool_result = ContentBlock::tool_result("id", "result");
         match tool_result {
-            ContentBlock::ToolResult { tool_use_id, content, .. } => {
+            ContentBlock::ToolResult {
+                tool_use_id,
+                content,
+                ..
+            } => {
                 assert_eq!(tool_use_id, "id");
                 assert_eq!(content.len(), 1);
             }
@@ -447,10 +457,10 @@ mod tests {
         use std::collections::HashMap;
         let mut map = HashMap::new();
         map.insert("key".to_string(), "valid_value");
-        
+
         let result = ContentBlock::tool_use("id", "name", map);
         assert!(result.is_ok());
-        
+
         // The error case would be if serde_json::to_value fails,
         // but most standard Rust types serialize successfully
     }
@@ -478,7 +488,7 @@ mod tests {
 
         let serialized = serde_json::to_value(&usage).unwrap();
         let deserialized: Usage = serde_json::from_value(serialized).unwrap();
-        
+
         assert_eq!(deserialized.input_tokens, u32::MAX);
         assert_eq!(deserialized.output_tokens, u32::MAX);
         assert_eq!(deserialized.cache_creation_input_tokens, Some(u32::MAX));

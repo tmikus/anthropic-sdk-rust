@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests {
     use crate::{
-        streaming::{StreamEvent, ContentDelta, MessageDelta, PartialMessage, MessageAccumulator},
+        streaming::{ContentDelta, MessageAccumulator, MessageDelta, PartialMessage, StreamEvent},
         types::{ContentBlock, Model, Role, StopReason, Usage},
     };
     use futures::{stream, StreamExt};
@@ -31,7 +31,7 @@ mod tests {
 
         let json = serde_json::to_string(&message_start).unwrap();
         let parsed: StreamEvent = serde_json::from_str(&json).unwrap();
-        
+
         match parsed {
             StreamEvent::MessageStart { message } => {
                 assert_eq!(message.id, "msg_123");
@@ -51,9 +51,12 @@ mod tests {
 
         let json = serde_json::to_string(&event).unwrap();
         let parsed: StreamEvent = serde_json::from_str(&json).unwrap();
-        
+
         match parsed {
-            StreamEvent::ContentBlockStart { index, content_block } => {
+            StreamEvent::ContentBlockStart {
+                index,
+                content_block,
+            } => {
                 assert_eq!(index, 0);
                 match content_block {
                     ContentBlock::Text { text, .. } => assert_eq!(text, "Hello"),
@@ -75,7 +78,7 @@ mod tests {
 
         let json = serde_json::to_string(&event).unwrap();
         let parsed: StreamEvent = serde_json::from_str(&json).unwrap();
-        
+
         match parsed {
             StreamEvent::ContentBlockDelta { index, delta } => {
                 assert_eq!(index, 0);
@@ -104,7 +107,7 @@ mod tests {
 
         let json = serde_json::to_string(&event).unwrap();
         let parsed: StreamEvent = serde_json::from_str(&json).unwrap();
-        
+
         match parsed {
             StreamEvent::MessageDelta { delta } => {
                 assert_eq!(delta.stop_reason, Some(StopReason::EndTurn));
@@ -120,7 +123,7 @@ mod tests {
         let event = StreamEvent::MessageStop;
         let json = serde_json::to_string(&event).unwrap();
         let parsed: StreamEvent = serde_json::from_str(&json).unwrap();
-        
+
         matches!(parsed, StreamEvent::MessageStop);
     }
 
@@ -129,7 +132,7 @@ mod tests {
         let event = StreamEvent::ContentBlockStop { index: 0 };
         let json = serde_json::to_string(&event).unwrap();
         let parsed: StreamEvent = serde_json::from_str(&json).unwrap();
-        
+
         match parsed {
             StreamEvent::ContentBlockStop { index } => assert_eq!(index, 0),
             _ => panic!("Expected ContentBlockStop event"),
@@ -191,9 +194,9 @@ mod tests {
         let stream = stream::iter(events);
         let message_stream = crate::streaming::MessageStream::new(Box::pin(stream));
         let accumulator = MessageAccumulator::new(message_stream);
-        
+
         let final_message = accumulator.accumulate().await.unwrap();
-        
+
         assert_eq!(final_message.id, "msg_123");
         assert_eq!(final_message.role, Role::Assistant);
         assert_eq!(final_message.model, Model::Claude35Sonnet20241022);
@@ -201,7 +204,7 @@ mod tests {
         assert_eq!(final_message.usage.input_tokens, 10);
         assert_eq!(final_message.usage.output_tokens, 5);
         assert_eq!(final_message.content.len(), 1);
-        
+
         match &final_message.content[0] {
             ContentBlock::Text { text, .. } => assert_eq!(text, "Hello world"),
             _ => panic!("Expected text content block"),
@@ -269,16 +272,16 @@ mod tests {
         let stream = stream::iter(events);
         let message_stream = crate::streaming::MessageStream::new(Box::pin(stream));
         let accumulator = MessageAccumulator::new(message_stream);
-        
+
         let final_message = accumulator.accumulate().await.unwrap();
-        
+
         assert_eq!(final_message.content.len(), 2);
-        
+
         match &final_message.content[0] {
             ContentBlock::Text { text, .. } => assert_eq!(text, "First block"),
             _ => panic!("Expected text content block"),
         }
-        
+
         match &final_message.content[1] {
             ContentBlock::Text { text, .. } => assert_eq!(text, "Second block"),
             _ => panic!("Expected text content block"),
@@ -310,10 +313,10 @@ mod tests {
         let stream = stream::iter(events);
         let message_stream = crate::streaming::MessageStream::new(Box::pin(stream));
         let accumulator = MessageAccumulator::new(message_stream);
-        
+
         let result = accumulator.accumulate().await;
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             crate::Error::Stream(msg) => assert_eq!(msg, "Test error"),
             _ => panic!("Expected Stream error"),
@@ -350,9 +353,9 @@ mod tests {
         let stream = stream::iter(events);
         let message_stream = crate::streaming::MessageStream::new(Box::pin(stream));
         let accumulator = MessageAccumulator::new(message_stream);
-        
+
         let result = accumulator.accumulate().await;
-        
+
         // Should still return the message even if incomplete
         assert!(result.is_ok());
         let message = result.unwrap();
@@ -378,7 +381,7 @@ mod tests {
 
         let json = serde_json::to_string(&partial_message).unwrap();
         let parsed: PartialMessage = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed.id, "msg_partial");
         assert_eq!(parsed.role, Role::Assistant);
         assert_eq!(parsed.model, Model::Claude35Sonnet20241022);
@@ -398,7 +401,7 @@ mod tests {
 
         let json = serde_json::to_string(&text_delta).unwrap();
         let parsed: ContentDelta = serde_json::from_str(&json).unwrap();
-        
+
         match parsed {
             ContentDelta::TextDelta { text } => assert_eq!(text, "Delta text"),
         }
@@ -419,7 +422,7 @@ mod tests {
 
         let json = serde_json::to_string(&message_delta).unwrap();
         let parsed: MessageDelta = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed.stop_reason, Some(StopReason::ToolUse));
         assert_eq!(parsed.stop_sequence, Some("END".to_string()));
         assert!(parsed.usage.is_some());
@@ -450,14 +453,14 @@ mod tests {
 
         let stream = stream::iter(events);
         let mut message_stream = crate::streaming::MessageStream::new(Box::pin(stream));
-        
+
         // Test that we can iterate over the stream
         let mut event_count = 0;
         while let Some(event_result) = message_stream.next().await {
             assert!(event_result.is_ok());
             event_count += 1;
         }
-        
+
         assert_eq!(event_count, 2);
     }
 }

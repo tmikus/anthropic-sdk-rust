@@ -18,7 +18,7 @@ impl ImageUtils {
     /// Create an image content block from a file path
     pub async fn from_file(path: impl AsRef<Path>) -> Result<ContentBlock> {
         let path = path.as_ref();
-        
+
         // Validate file exists and is readable
         if !path.exists() {
             return Err(Error::Config(format!(
@@ -26,19 +26,23 @@ impl ImageUtils {
                 path.display()
             )));
         }
-        
+
         if !path.is_file() {
             return Err(Error::Config(format!(
                 "Path is not a file: {}",
                 path.display()
             )));
         }
-        
+
         let media_type = Self::detect_media_type(path)?;
         let data = tokio::fs::read(path).await.map_err(|e| {
-            Error::Config(format!("Failed to read image file '{}': {}", path.display(), e))
+            Error::Config(format!(
+                "Failed to read image file '{}': {}",
+                path.display(),
+                e
+            ))
         })?;
-        
+
         // Validate file size (max 20MB for images)
         const MAX_IMAGE_SIZE: usize = 20 * 1024 * 1024;
         if data.len() > MAX_IMAGE_SIZE {
@@ -48,7 +52,7 @@ impl ImageUtils {
                 MAX_IMAGE_SIZE
             )));
         }
-        
+
         let encoded = general_purpose::STANDARD.encode(&data);
         Ok(ContentBlock::image_base64(media_type, encoded))
     }
@@ -64,7 +68,7 @@ impl ImageUtils {
                 MAX_IMAGE_SIZE
             )));
         }
-        
+
         let encoded = general_purpose::STANDARD.encode(data);
         Ok(ContentBlock::image_base64(media_type, encoded))
     }
@@ -82,10 +86,12 @@ impl ImageUtils {
         let extension = path
             .extension()
             .and_then(|ext| ext.to_str())
-            .ok_or_else(|| Error::Config(format!(
-                "Unable to determine file extension for: {}",
-                path.display()
-            )))?
+            .ok_or_else(|| {
+                Error::Config(format!(
+                    "Unable to determine file extension for: {}",
+                    path.display()
+                ))
+            })?
             .to_lowercase();
 
         match extension.as_str() {
@@ -103,9 +109,9 @@ impl ImageUtils {
 
     /// Detect media type from MIME type string
     pub fn detect_media_type_from_mime(mime_str: &str) -> Result<ImageMediaType> {
-        let mime: Mime = mime_str.parse().map_err(|_| {
-            Error::Config(format!("Invalid MIME type: {}", mime_str))
-        })?;
+        let mime: Mime = mime_str
+            .parse()
+            .map_err(|_| Error::Config(format!("Invalid MIME type: {}", mime_str)))?;
 
         match (mime.type_(), mime.subtype()) {
             (mime::IMAGE, mime::JPEG) => Ok(ImageMediaType::Jpeg),
@@ -126,22 +132,22 @@ impl ImageUtils {
         }
 
         let is_valid = match expected_type {
-            ImageMediaType::Jpeg => {
-                data.len() >= 2 && data[0] == 0xFF && data[1] == 0xD8
-            }
+            ImageMediaType::Jpeg => data.len() >= 2 && data[0] == 0xFF && data[1] == 0xD8,
             ImageMediaType::Png => {
                 data.len() >= 8 && data[0..8] == [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
             }
             ImageMediaType::Gif => {
-                data.len() >= 6 && (
-                    data[0..6] == [0x47, 0x49, 0x46, 0x38, 0x37, 0x61] || // GIF87a
-                    data[0..6] == [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]    // GIF89a
-                )
+                data.len() >= 6
+                    && (
+                        data[0..6] == [0x47, 0x49, 0x46, 0x38, 0x37, 0x61] || // GIF87a
+                    data[0..6] == [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]
+                        // GIF89a
+                    )
             }
             ImageMediaType::WebP => {
                 data.len() >= 12 &&
                 data[0..4] == [0x52, 0x49, 0x46, 0x46] && // RIFF
-                data[8..12] == [0x57, 0x45, 0x42, 0x50]   // WEBP
+                data[8..12] == [0x57, 0x45, 0x42, 0x50] // WEBP
             }
         };
 
@@ -163,7 +169,7 @@ impl DocumentUtils {
     /// Create a document content block from a file path
     pub async fn from_file(path: impl AsRef<Path>) -> Result<ContentBlock> {
         let path = path.as_ref();
-        
+
         // Validate file exists and is readable
         if !path.exists() {
             return Err(Error::Config(format!(
@@ -171,19 +177,23 @@ impl DocumentUtils {
                 path.display()
             )));
         }
-        
+
         if !path.is_file() {
             return Err(Error::Config(format!(
                 "Path is not a file: {}",
                 path.display()
             )));
         }
-        
+
         let media_type = Self::detect_media_type(path)?;
         let data = tokio::fs::read(path).await.map_err(|e| {
-            Error::Config(format!("Failed to read document file '{}': {}", path.display(), e))
+            Error::Config(format!(
+                "Failed to read document file '{}': {}",
+                path.display(),
+                e
+            ))
         })?;
-        
+
         // Validate file size (max 32MB for documents)
         const MAX_DOCUMENT_SIZE: usize = 32 * 1024 * 1024;
         if data.len() > MAX_DOCUMENT_SIZE {
@@ -193,10 +203,10 @@ impl DocumentUtils {
                 MAX_DOCUMENT_SIZE
             )));
         }
-        
+
         // Validate document format
         Self::validate_document_format(&data, &media_type)?;
-        
+
         let encoded = general_purpose::STANDARD.encode(&data);
         Ok(ContentBlock::Document {
             source: DocumentSource::Base64 {
@@ -217,10 +227,10 @@ impl DocumentUtils {
                 MAX_DOCUMENT_SIZE
             )));
         }
-        
+
         // Validate document format
         Self::validate_document_format(data, &media_type)?;
-        
+
         let encoded = general_purpose::STANDARD.encode(data);
         Ok(ContentBlock::Document {
             source: DocumentSource::Base64 {
@@ -243,10 +253,12 @@ impl DocumentUtils {
         let extension = path
             .extension()
             .and_then(|ext| ext.to_str())
-            .ok_or_else(|| Error::Config(format!(
-                "Unable to determine file extension for: {}",
-                path.display()
-            )))?
+            .ok_or_else(|| {
+                Error::Config(format!(
+                    "Unable to determine file extension for: {}",
+                    path.display()
+                ))
+            })?
             .to_lowercase();
 
         match extension.as_str() {
@@ -262,9 +274,9 @@ impl DocumentUtils {
 
     /// Detect media type from MIME type string
     pub fn detect_media_type_from_mime(mime_str: &str) -> Result<DocumentMediaType> {
-        let mime: Mime = mime_str.parse().map_err(|_| {
-            Error::Config(format!("Invalid MIME type: {}", mime_str))
-        })?;
+        let mime: Mime = mime_str
+            .parse()
+            .map_err(|_| Error::Config(format!("Invalid MIME type: {}", mime_str)))?;
 
         match (mime.type_(), mime.subtype()) {
             (mime::APPLICATION, subtype) if subtype == "pdf" => Ok(DocumentMediaType::Pdf),
@@ -308,11 +320,10 @@ pub fn validate_url(url: &str) -> Result<url::Url> {
     if url.is_empty() {
         return Err(Error::Config("URL cannot be empty".to_string()));
     }
-    
-    let parsed = url::Url::parse(url).map_err(|e| {
-        Error::Config(format!("Invalid URL '{}': {}", url, e))
-    })?;
-    
+
+    let parsed =
+        url::Url::parse(url).map_err(|e| Error::Config(format!("Invalid URL '{}': {}", url, e)))?;
+
     // Validate scheme
     if !matches!(parsed.scheme(), "http" | "https") {
         return Err(Error::Config(format!(
@@ -320,7 +331,7 @@ pub fn validate_url(url: &str) -> Result<url::Url> {
             parsed.scheme()
         )));
     }
-    
+
     // Validate host
     if parsed.host().is_none() {
         return Err(Error::Config(format!(
@@ -328,16 +339,20 @@ pub fn validate_url(url: &str) -> Result<url::Url> {
             url
         )));
     }
-    
+
     // Check for suspicious patterns
     let host_str = parsed.host_str().unwrap_or("");
-    if host_str == "localhost" || host_str.starts_with("127.") || host_str.starts_with("192.168.") || host_str.starts_with("10.") {
+    if host_str == "localhost"
+        || host_str.starts_with("127.")
+        || host_str.starts_with("192.168.")
+        || host_str.starts_with("10.")
+    {
         return Err(Error::Config(format!(
             "URLs pointing to local/private networks are not allowed: {}",
             url
         )));
     }
-    
+
     Ok(parsed)
 }
 
@@ -349,14 +364,14 @@ impl Base64Utils {
     pub fn encode(data: &[u8]) -> String {
         general_purpose::STANDARD.encode(data)
     }
-    
+
     /// Decode base64 string to bytes
     pub fn decode(encoded: &str) -> Result<Vec<u8>> {
-        general_purpose::STANDARD.decode(encoded).map_err(|e| {
-            Error::Config(format!("Invalid base64 data: {}", e))
-        })
+        general_purpose::STANDARD
+            .decode(encoded)
+            .map_err(|e| Error::Config(format!("Invalid base64 data: {}", e)))
     }
-    
+
     /// Validate base64 string format
     pub fn validate(encoded: &str) -> Result<()> {
         Self::decode(encoded).map(|_| ())
@@ -376,7 +391,7 @@ impl MimeUtils {
             ImageMediaType::WebP => "image/webp",
         }
     }
-    
+
     /// Get MIME type string from DocumentMediaType
     pub fn document_media_type_to_string(media_type: DocumentMediaType) -> &'static str {
         match media_type {
@@ -384,12 +399,12 @@ impl MimeUtils {
             DocumentMediaType::Text => "text/plain",
         }
     }
-    
+
     /// Parse MIME type and determine if it's a supported image type
     pub fn is_supported_image_mime(mime_str: &str) -> bool {
         ImageUtils::detect_media_type_from_mime(mime_str).is_ok()
     }
-    
+
     /// Parse MIME type and determine if it's a supported document type
     pub fn is_supported_document_mime(mime_str: &str) -> bool {
         DocumentUtils::detect_media_type_from_mime(mime_str).is_ok()
@@ -534,19 +549,26 @@ mod tests {
         // PDF magic bytes
         let pdf_data = b"%PDF-1.4";
         assert!(DocumentUtils::validate_document_format(pdf_data, &DocumentMediaType::Pdf).is_ok());
-        
+
         // PDF data should not be validated as text when we expect text format
         // Note: PDF data is valid UTF-8, but we validate based on magic bytes for PDF
         let non_pdf_data = b"This is just text, not a PDF";
-        assert!(DocumentUtils::validate_document_format(non_pdf_data, &DocumentMediaType::Pdf).is_err());
+        assert!(
+            DocumentUtils::validate_document_format(non_pdf_data, &DocumentMediaType::Pdf).is_err()
+        );
 
         // Valid UTF-8 text
         let text_data = b"Hello, World!";
-        assert!(DocumentUtils::validate_document_format(text_data, &DocumentMediaType::Text).is_ok());
+        assert!(
+            DocumentUtils::validate_document_format(text_data, &DocumentMediaType::Text).is_ok()
+        );
 
         // Invalid UTF-8 should fail for text
         let invalid_utf8 = [0xFF, 0xFE, 0xFD];
-        assert!(DocumentUtils::validate_document_format(&invalid_utf8, &DocumentMediaType::Text).is_err());
+        assert!(
+            DocumentUtils::validate_document_format(&invalid_utf8, &DocumentMediaType::Text)
+                .is_err()
+        );
 
         // Empty data should fail
         assert!(DocumentUtils::validate_document_format(&[], &DocumentMediaType::Pdf).is_err());
@@ -557,9 +579,11 @@ mod tests {
         // Create valid JPEG data
         let jpeg_data = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]; // Minimal JPEG header
         let content_block = ImageUtils::from_bytes(&jpeg_data, ImageMediaType::Jpeg).unwrap();
-        
+
         match content_block {
-            ContentBlock::Image { source: ImageSource::Base64 { media_type, data } } => {
+            ContentBlock::Image {
+                source: ImageSource::Base64 { media_type, data },
+            } => {
                 assert_eq!(media_type, ImageMediaType::Jpeg);
                 assert!(!data.is_empty());
             }
@@ -572,9 +596,11 @@ mod tests {
         // Create valid PDF data
         let pdf_data = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj";
         let content_block = DocumentUtils::from_bytes(pdf_data, DocumentMediaType::Pdf).unwrap();
-        
+
         match content_block {
-            ContentBlock::Document { source: DocumentSource::Base64 { media_type, data } } => {
+            ContentBlock::Document {
+                source: DocumentSource::Base64 { media_type, data },
+            } => {
                 assert_eq!(media_type, DocumentMediaType::Pdf);
                 assert!(!data.is_empty());
             }
@@ -586,9 +612,11 @@ mod tests {
     fn test_image_from_url() {
         let url = "https://example.com/image.jpg";
         let content_block = ImageUtils::from_url(url).unwrap();
-        
+
         match content_block {
-            ContentBlock::Image { source: ImageSource::Url { url: parsed_url } } => {
+            ContentBlock::Image {
+                source: ImageSource::Url { url: parsed_url },
+            } => {
                 assert_eq!(parsed_url.as_str(), url);
             }
             _ => panic!("Expected Image content block with URL source"),
@@ -599,9 +627,11 @@ mod tests {
     fn test_document_from_url() {
         let url = "https://example.com/document.pdf";
         let content_block = DocumentUtils::from_url(url).unwrap();
-        
+
         match content_block {
-            ContentBlock::Document { source: DocumentSource::Url { url: parsed_url } } => {
+            ContentBlock::Document {
+                source: DocumentSource::Url { url: parsed_url },
+            } => {
                 assert_eq!(parsed_url.as_str(), url);
             }
             _ => panic!("Expected Document content block with URL source"),
@@ -611,14 +641,32 @@ mod tests {
     #[test]
     fn test_mime_utils() {
         // Test image MIME type conversion
-        assert_eq!(MimeUtils::image_media_type_to_string(ImageMediaType::Jpeg), "image/jpeg");
-        assert_eq!(MimeUtils::image_media_type_to_string(ImageMediaType::Png), "image/png");
-        assert_eq!(MimeUtils::image_media_type_to_string(ImageMediaType::Gif), "image/gif");
-        assert_eq!(MimeUtils::image_media_type_to_string(ImageMediaType::WebP), "image/webp");
+        assert_eq!(
+            MimeUtils::image_media_type_to_string(ImageMediaType::Jpeg),
+            "image/jpeg"
+        );
+        assert_eq!(
+            MimeUtils::image_media_type_to_string(ImageMediaType::Png),
+            "image/png"
+        );
+        assert_eq!(
+            MimeUtils::image_media_type_to_string(ImageMediaType::Gif),
+            "image/gif"
+        );
+        assert_eq!(
+            MimeUtils::image_media_type_to_string(ImageMediaType::WebP),
+            "image/webp"
+        );
 
         // Test document MIME type conversion
-        assert_eq!(MimeUtils::document_media_type_to_string(DocumentMediaType::Pdf), "application/pdf");
-        assert_eq!(MimeUtils::document_media_type_to_string(DocumentMediaType::Text), "text/plain");
+        assert_eq!(
+            MimeUtils::document_media_type_to_string(DocumentMediaType::Pdf),
+            "application/pdf"
+        );
+        assert_eq!(
+            MimeUtils::document_media_type_to_string(DocumentMediaType::Text),
+            "text/plain"
+        );
 
         // Test MIME type support detection
         assert!(MimeUtils::is_supported_image_mime("image/jpeg"));
@@ -657,7 +705,9 @@ mod tests {
 
         let content_block = ImageUtils::from_file(&img_path).await.unwrap();
         match content_block {
-            ContentBlock::Image { source: ImageSource::Base64 { media_type, .. } } => {
+            ContentBlock::Image {
+                source: ImageSource::Base64 { media_type, .. },
+            } => {
                 assert_eq!(media_type, ImageMediaType::Png);
             }
             _ => panic!("Expected Image content block"),
@@ -677,7 +727,9 @@ mod tests {
 
         let doc_content_block = DocumentUtils::from_file(&doc_path).await.unwrap();
         match doc_content_block {
-            ContentBlock::Document { source: DocumentSource::Base64 { media_type, .. } } => {
+            ContentBlock::Document {
+                source: DocumentSource::Base64 { media_type, .. },
+            } => {
                 assert_eq!(media_type, DocumentMediaType::Pdf);
             }
             _ => panic!("Expected Document content block"),

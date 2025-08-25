@@ -3,16 +3,22 @@
 #[cfg(test)]
 mod tests {
     use crate::error::Error;
-    use std::time::Duration;
     use pretty_assertions::assert_eq;
+    use std::time::Duration;
 
     #[test]
     fn test_error_display() {
         let network_error = Error::Network("Connection failed".to_string());
-        assert_eq!(network_error.to_string(), "Network error: Connection failed");
+        assert_eq!(
+            network_error.to_string(),
+            "Network error: Connection failed"
+        );
 
         let auth_error = Error::Authentication("Invalid API key".to_string());
-        assert_eq!(auth_error.to_string(), "Authentication failed: Invalid API key");
+        assert_eq!(
+            auth_error.to_string(),
+            "Authentication failed: Invalid API key"
+        );
 
         let api_error = Error::Api {
             status: reqwest::StatusCode::BAD_REQUEST,
@@ -20,16 +26,25 @@ mod tests {
             error_type: Some("validation_error".to_string()),
             request_id: Some("req-123".to_string()),
         };
-        assert_eq!(api_error.to_string(), "API error: 400 Bad Request - Invalid request");
+        assert_eq!(
+            api_error.to_string(),
+            "API error: 400 Bad Request - Invalid request"
+        );
 
         let rate_limit_error = Error::RateLimit {
             retry_after: Some(Duration::from_secs(60)),
             request_id: Some("req-456".to_string()),
         };
-        assert_eq!(rate_limit_error.to_string(), "Rate limit exceeded, retry after 60s");
+        assert_eq!(
+            rate_limit_error.to_string(),
+            "Rate limit exceeded, retry after 60s"
+        );
 
         let config_error = Error::Config("Invalid configuration".to_string());
-        assert_eq!(config_error.to_string(), "Configuration error: Invalid configuration");
+        assert_eq!(
+            config_error.to_string(),
+            "Configuration error: Invalid configuration"
+        );
 
         let stream_error = Error::Stream("Stream interrupted".to_string());
         assert_eq!(stream_error.to_string(), "Stream error: Stream interrupted");
@@ -41,10 +56,16 @@ mod tests {
         assert_eq!(timeout_error.to_string(), "Request timeout after 30s");
 
         let invalid_request_error = Error::InvalidRequest("Missing required field".to_string());
-        assert_eq!(invalid_request_error.to_string(), "Invalid request: Missing required field");
+        assert_eq!(
+            invalid_request_error.to_string(),
+            "Invalid request: Missing required field"
+        );
 
         let invalid_response_error = Error::InvalidResponse("Malformed JSON".to_string());
-        assert_eq!(invalid_response_error.to_string(), "Invalid response format: Malformed JSON");
+        assert_eq!(
+            invalid_response_error.to_string(),
+            "Invalid response format: Malformed JSON"
+        );
     }
 
     #[test]
@@ -149,7 +170,7 @@ mod tests {
     fn test_error_network_creation() {
         // Test creating network errors directly
         let error = Error::Network("Connection failed".to_string());
-        
+
         match error {
             Error::Network(msg) => {
                 assert_eq!(msg, "Connection failed");
@@ -161,9 +182,10 @@ mod tests {
     #[test]
     fn test_error_from_serde_json() {
         // Create a serde_json error by parsing invalid JSON
-        let json_error: serde_json::Error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
+        let json_error: serde_json::Error =
+            serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
         let error = Error::from(json_error);
-        
+
         match error {
             Error::Serialization(_) => {
                 // Expected conversion - serde_json::Error converts to Serialization
@@ -193,10 +215,13 @@ mod tests {
     fn test_error_chain() {
         // Test that errors can be chained properly
         let error = Error::Config("Invalid configuration".to_string());
-        
+
         // Test that the error displays correctly
-        assert_eq!(error.to_string(), "Configuration error: Invalid configuration");
-        
+        assert_eq!(
+            error.to_string(),
+            "Configuration error: Invalid configuration"
+        );
+
         // Test error categorization
         assert!(!error.is_retryable());
         assert!(!error.is_network_error());
@@ -320,7 +345,7 @@ mod tests {
         // Verify that Error implements Send + Sync
         fn assert_send<T: Send>() {}
         fn assert_sync<T: Sync>() {}
-        
+
         assert_send::<Error>();
         assert_sync::<Error>();
     }
@@ -328,11 +353,11 @@ mod tests {
     #[test]
     fn test_error_std_error_trait() {
         let error = Error::Config("Test error".to_string());
-        
+
         // Test that it implements std::error::Error
         let std_error: &dyn std::error::Error = &error;
         assert_eq!(std_error.to_string(), "Configuration error: Test error");
-        
+
         // Test source chain (should be None for our simple errors)
         assert!(std_error.source().is_none());
     }

@@ -10,9 +10,8 @@
 //! For testing purposes, you can set it to a dummy value to see the request structure.
 
 use anthropic_rust::{
-    Client, Model,
-    types::{ContentBlock, ChatRequest, MessageParam, Role},
-    Error,
+    types::{ChatRequest, ContentBlock, MessageParam, Role},
+    Client, Error, Model,
 };
 
 #[tokio::main]
@@ -34,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             println!("✗ Failed to create client: {}", e);
             println!("  Make sure ANTHROPIC_API_KEY environment variable is set");
-            
+
             // Create client with explicit API key for demonstration
             println!("  Creating client with explicit configuration...");
             Client::builder()
@@ -47,11 +46,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Example 2: Simple chat request
     println!("\n2. Creating a simple chat request...");
-    let simple_request = client.chat_builder()
-        .user_message(ContentBlock::text("Hello, Claude! Can you introduce yourself?"))
+    let simple_request = client
+        .chat_builder()
+        .user_message(ContentBlock::text(
+            "Hello, Claude! Can you introduce yourself?",
+        ))
         .build();
 
-    println!("✓ Request created with {} message(s)", simple_request.messages.len());
+    println!(
+        "✓ Request created with {} message(s)",
+        simple_request.messages.len()
+    );
 
     // Example 3: Execute the chat request
     println!("\n3. Executing chat request...");
@@ -61,9 +66,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("  Response ID: {}", response.id);
             println!("  Model used: {:?}", response.model);
             println!("  Stop reason: {:?}", response.stop_reason);
-            println!("  Token usage: {} input, {} output", 
-                     response.usage.input_tokens, response.usage.output_tokens);
-            
+            println!(
+                "  Token usage: {} input, {} output",
+                response.usage.input_tokens, response.usage.output_tokens
+            );
+
             // Print the response content
             println!("  Response content:");
             for (i, content_block) in response.content.iter().enumerate() {
@@ -89,12 +96,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 4: Chat with model override
     println!("\n4. Testing model override...");
     let conversation_request = ChatRequest {
-        messages: vec![
-            MessageParam {
-                role: Role::User,
-                content: vec![ContentBlock::text("What's the capital of France?")],
-            },
-        ],
+        messages: vec![MessageParam {
+            role: Role::User,
+            content: vec![ContentBlock::text("What's the capital of France?")],
+        }],
         system: Some(vec![anthropic_rust::types::SystemMessage {
             message_type: "text".to_string(),
             text: "Be concise and direct in your responses.".to_string(),
@@ -105,12 +110,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         stop_sequences: None,
     };
 
-    match client.execute_chat_with_model(Model::Claude3Haiku20240307, conversation_request).await {
+    match client
+        .execute_chat_with_model(Model::Claude3Haiku20240307, conversation_request)
+        .await
+    {
         Ok(response) => {
             println!("✓ Model override successful!");
-            println!("  Used model: {:?} (overrode default {:?})", 
-                     response.model, client.default_model());
-            
+            println!(
+                "  Used model: {:?} (overrode default {:?})",
+                response.model,
+                client.default_model()
+            );
+
             if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
                 println!("  Response: {}", text);
             }
@@ -154,11 +165,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client1 = client.clone();
     let client2 = client.clone();
 
-    let request1 = client1.chat_builder()
+    let request1 = client1
+        .chat_builder()
         .user_message(ContentBlock::text("Count from 1 to 3"))
         .build();
 
-    let request2 = client2.chat_builder()
+    let request2 = client2
+        .chat_builder()
         .user_message(ContentBlock::text("Name three colors"))
         .build();
 
@@ -191,11 +204,11 @@ fn handle_error(error: &Error) {
     println!("  Error details:");
     println!("    Category: {:?}", error.category());
     println!("    Is retryable: {}", error.is_retryable());
-    
+
     if let Some(request_id) = error.request_id() {
         println!("    Request ID: {}", request_id);
     }
-    
+
     if let Some(retry_delay) = error.retry_delay() {
         println!("    Suggested retry delay: {:?}", retry_delay);
     }

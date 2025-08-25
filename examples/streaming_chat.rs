@@ -9,7 +9,7 @@
 //!
 //! Run with: cargo run --example streaming_chat
 
-use anthropic_rust::{Client, Model, ContentBlock, StreamEvent, MessageAccumulator};
+use anthropic_rust::{Client, ContentBlock, MessageAccumulator, Model, StreamEvent};
 use futures::StreamExt;
 use std::io::{self, Write};
 use std::time::Instant;
@@ -17,7 +17,7 @@ use std::time::Instant;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    
+
     println!("=== Anthropic Rust SDK - Streaming Examples ===\n");
 
     // Create client
@@ -36,10 +36,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Basic streaming with real-time display
     println!("1. Basic Streaming Response");
     println!("==========================");
-    
-    let request = client.chat_builder()
+
+    let request = client
+        .chat_builder()
         .system("You are a creative writer. Write engaging content.")
-        .user_message(ContentBlock::text("Write a short story about a robot learning to paint."))
+        .user_message(ContentBlock::text(
+            "Write a short story about a robot learning to paint.",
+        ))
         .build();
 
     println!("User: Write a short story about a robot learning to paint.");
@@ -55,50 +58,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(mut stream) => {
             while let Some(event_result) = stream.next().await {
                 match event_result {
-                    Ok(event) => {
-                        match event {
-                            StreamEvent::MessageStart { message } => {
-                                println!("\n📨 Message started (ID: {})", message.id);
+                    Ok(event) => match event {
+                        StreamEvent::MessageStart { message } => {
+                            println!("\n📨 Message started (ID: {})", message.id);
+                            print!("🤖 ");
+                            io::stdout().flush()?;
+                        }
+                        StreamEvent::ContentBlockStart { index, .. } => {
+                            if index > 0 {
+                                println!("\n📝 Content block {} started", index);
                                 print!("🤖 ");
                                 io::stdout().flush()?;
                             }
-                            StreamEvent::ContentBlockStart { index, .. } => {
-                                if index > 0 {
-                                    println!("\n📝 Content block {} started", index);
-                                    print!("🤖 ");
-                                    io::stdout().flush()?;
-                                }
-                            }
-                            StreamEvent::ContentBlockDelta { delta, .. } => {
-                                let anthropic_rust::ContentDelta::TextDelta { text } = delta;
-                                print!("{}", text);
-                                accumulated_text.push_str(&text);
-                                token_count += text.split_whitespace().count();
-                                io::stdout().flush()?;
-                            }
-                            StreamEvent::ContentBlockStop { index } => {
-                                if index == 0 {
-                                    println!("\n✅ Content block {} completed", index);
-                                }
-                            }
-                            StreamEvent::MessageDelta { delta } => {
-                                if let Some(stop_reason) = delta.stop_reason {
-                                    println!("\n🛑 Stop reason: {:?}", stop_reason);
-                                }
-                                if let Some(usage) = delta.usage {
-                                    println!("📊 Token usage: {} input, {} output", 
-                                             usage.input_tokens, usage.output_tokens);
-                                }
-                            }
-                            StreamEvent::MessageStop => {
-                                let duration = start_time.elapsed();
-                                println!("\n✨ Message completed!");
-                                println!("⏱️  Duration: {:.2}s", duration.as_secs_f64());
-                                println!("📝 Approximate words: {}", token_count);
-                                break;
+                        }
+                        StreamEvent::ContentBlockDelta { delta, .. } => {
+                            let anthropic_rust::ContentDelta::TextDelta { text } = delta;
+                            print!("{}", text);
+                            accumulated_text.push_str(&text);
+                            token_count += text.split_whitespace().count();
+                            io::stdout().flush()?;
+                        }
+                        StreamEvent::ContentBlockStop { index } => {
+                            if index == 0 {
+                                println!("\n✅ Content block {} completed", index);
                             }
                         }
-                    }
+                        StreamEvent::MessageDelta { delta } => {
+                            if let Some(stop_reason) = delta.stop_reason {
+                                println!("\n🛑 Stop reason: {:?}", stop_reason);
+                            }
+                            if let Some(usage) = delta.usage {
+                                println!(
+                                    "📊 Token usage: {} input, {} output",
+                                    usage.input_tokens, usage.output_tokens
+                                );
+                            }
+                        }
+                        StreamEvent::MessageStop => {
+                            let duration = start_time.elapsed();
+                            println!("\n✨ Message completed!");
+                            println!("⏱️  Duration: {:.2}s", duration.as_secs_f64());
+                            println!("📝 Approximate words: {}", token_count);
+                            break;
+                        }
+                    },
                     Err(e) => {
                         println!("\n❌ Stream error: {}", e);
                         break;
@@ -112,9 +115,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 2: Using MessageAccumulator
     println!("\n2. Stream Accumulation");
     println!("=====================");
-    
-    let accumulator_request = client.chat_builder()
-        .user_message(ContentBlock::text("Explain quantum computing in simple terms."))
+
+    let accumulator_request = client
+        .chat_builder()
+        .user_message(ContentBlock::text(
+            "Explain quantum computing in simple terms.",
+        ))
         .build();
 
     println!("User: Explain quantum computing in simple terms.");
@@ -128,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("\n✅ Accumulation complete!");
                     println!("📨 Message ID: {}", final_message.id);
                     println!("🎯 Model: {:?}", final_message.model);
-                    
+
                     for (i, content) in final_message.content.iter().enumerate() {
                         if let ContentBlock::Text { text, .. } = content {
                             println!("📝 Content block {}: {} characters", i, text.len());
@@ -141,11 +147,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             println!("   Preview: {}", preview);
                         }
                     }
-                    
+
                     let usage = final_message.usage;
-                    println!("📊 Final usage: {} input + {} output = {} total tokens",
-                             usage.input_tokens, usage.output_tokens,
-                             usage.input_tokens + usage.output_tokens);
+                    println!(
+                        "📊 Final usage: {} input + {} output = {} total tokens",
+                        usage.input_tokens,
+                        usage.output_tokens,
+                        usage.input_tokens + usage.output_tokens
+                    );
                 }
                 Err(e) => println!("❌ Accumulation failed: {}", e),
             }
@@ -156,7 +165,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 3: Streaming with different models
     println!("\n3. Model Comparison Streaming");
     println!("============================");
-    
+
     let question = "What are the benefits of Rust programming language?";
     println!("Question: {}", question);
 
@@ -170,7 +179,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         print!("🤖 ");
         io::stdout().flush()?;
 
-        let model_request = client.chat_builder()
+        let model_request = client
+            .chat_builder()
             .user_message(ContentBlock::text(question))
             .build();
 
@@ -189,8 +199,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                         Ok(StreamEvent::MessageStop) => {
                             let duration = start.elapsed();
-                            println!("\n⏱️  {} completed in {:.2}s ({} chars)", 
-                                     description, duration.as_secs_f64(), char_count);
+                            println!(
+                                "\n⏱️  {} completed in {:.2}s ({} chars)",
+                                description,
+                                duration.as_secs_f64(),
+                                char_count
+                            );
                             break;
                         }
                         Ok(_) => {} // Ignore other events for this example
@@ -208,10 +222,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 4: Streaming with progress indicators
     println!("\n4. Streaming with Progress Tracking");
     println!("==================================");
-    
-    let progress_request = client.chat_builder()
+
+    let progress_request = client
+        .chat_builder()
         .system("Provide a detailed explanation with examples.")
-        .user_message(ContentBlock::text("Explain the concept of ownership in Rust with examples."))
+        .user_message(ContentBlock::text(
+            "Explain the concept of ownership in Rust with examples.",
+        ))
         .build();
 
     println!("User: Explain Rust ownership with examples.");
@@ -225,30 +242,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             while let Some(event_result) = stream.next().await {
                 match event_result {
-                    Ok(event) => {
-                        match event {
-                            StreamEvent::ContentBlockStart { .. } => {
-                                content_blocks += 1;
-                                print!("📝");
+                    Ok(event) => match event {
+                        StreamEvent::ContentBlockStart { .. } => {
+                            content_blocks += 1;
+                            print!("📝");
+                            io::stdout().flush()?;
+                        }
+                        StreamEvent::ContentBlockDelta { delta, .. } => {
+                            let anthropic_rust::ContentDelta::TextDelta { text } = delta;
+                            progress_chars += text.len();
+                            if progress_chars % 50 == 0 {
+                                print!(".");
                                 io::stdout().flush()?;
                             }
-                            StreamEvent::ContentBlockDelta { delta, .. } => {
-                                let anthropic_rust::ContentDelta::TextDelta { text } = delta;
-                                progress_chars += text.len();
-                                if progress_chars % 50 == 0 {
-                                    print!(".");
-                                    io::stdout().flush()?;
-                                }
-                            }
-                            StreamEvent::MessageStop => {
-                                let duration = start.elapsed();
-                                println!("\n✅ Complete! {} content blocks, {} characters in {:.2}s",
-                                         content_blocks, progress_chars, duration.as_secs_f64());
-                                break;
-                            }
-                            _ => {}
                         }
-                    }
+                        StreamEvent::MessageStop => {
+                            let duration = start.elapsed();
+                            println!(
+                                "\n✅ Complete! {} content blocks, {} characters in {:.2}s",
+                                content_blocks,
+                                progress_chars,
+                                duration.as_secs_f64()
+                            );
+                            break;
+                        }
+                        _ => {}
+                    },
                     Err(e) => {
                         println!("\n❌ Progress tracking error: {}", e);
                         break;
@@ -262,20 +281,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 5: Error handling in streaming
     println!("\n5. Streaming Error Handling");
     println!("===========================");
-    
+
     // This example shows how to handle various streaming errors
-    let error_request = client.chat_builder()
+    let error_request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test streaming error handling"))
         .build();
 
     match client.stream_chat(error_request).await {
         Ok(mut stream) => {
             println!("✅ Stream started successfully");
-            
+
             let mut event_count = 0;
             while let Some(event_result) = stream.next().await {
                 event_count += 1;
-                
+
                 match event_result {
                     Ok(event) => {
                         match event {
@@ -283,7 +303,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 println!("📨 Message started (event #{})", event_count);
                             }
                             StreamEvent::MessageStop => {
-                                println!("✅ Stream completed successfully after {} events", event_count);
+                                println!(
+                                    "✅ Stream completed successfully after {} events",
+                                    event_count
+                                );
                                 break;
                             }
                             _ => {
@@ -307,6 +330,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n=== Streaming Examples Complete ===");
     println!("💡 Try running with a valid ANTHROPIC_API_KEY to see real streaming!");
-    
+
     Ok(())
 }

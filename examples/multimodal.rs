@@ -9,14 +9,12 @@
 //!
 //! Run with: cargo run --example multimodal
 
-use anthropic_rust::{
-    Client, Model, ContentBlock, ImageMediaType,
-};
+use anthropic_rust::{Client, ContentBlock, ImageMediaType, Model};
 
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    
+
     println!("=== Anthropic Rust SDK - Multimodal Examples ===\n");
 
     // Create client
@@ -35,23 +33,26 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Example 1: Simple image analysis with base64
     println!("1. Simple Image Analysis (Base64)");
     println!("=================================");
-    
+
     // Create a simple test image (1x1 red pixel in PNG format)
     let test_image_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-    
-    let image_request = client.chat_builder()
+
+    let image_request = client
+        .chat_builder()
         .user_message(ContentBlock::image_base64(
             ImageMediaType::Png,
-            test_image_base64.to_string()
+            test_image_base64.to_string(),
         ))
-        .user_message(ContentBlock::text("What do you see in this image? Describe its properties."))
+        .user_message(ContentBlock::text(
+            "What do you see in this image? Describe its properties.",
+        ))
         .build();
 
     match client.execute_chat(image_request).await {
         Ok(response) => {
             println!("User: [Sent a 1x1 red pixel PNG image]");
             println!("User: What do you see in this image? Describe its properties.");
-            
+
             for content in response.content {
                 if let ContentBlock::Text { text, .. } = content {
                     println!("Claude: {}", text);
@@ -64,17 +65,28 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Example 2: Multiple images in conversation
     println!("\n2. Multiple Images in Conversation");
     println!("=================================");
-    
+
     // Create different colored pixels for comparison
     let red_pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
     let blue_pixel = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
-    
-    let multi_image_request = client.chat_builder()
-        .user_message(ContentBlock::text("I'm going to show you two images. Please compare them."))
-        .user_message(ContentBlock::image_base64(ImageMediaType::Png, red_pixel.to_string()))
+
+    let multi_image_request = client
+        .chat_builder()
+        .user_message(ContentBlock::text(
+            "I'm going to show you two images. Please compare them.",
+        ))
+        .user_message(ContentBlock::image_base64(
+            ImageMediaType::Png,
+            red_pixel.to_string(),
+        ))
         .user_message(ContentBlock::text("This is image 1."))
-        .user_message(ContentBlock::image_base64(ImageMediaType::Png, blue_pixel.to_string()))
-        .user_message(ContentBlock::text("This is image 2. What are the differences between these images?"))
+        .user_message(ContentBlock::image_base64(
+            ImageMediaType::Png,
+            blue_pixel.to_string(),
+        ))
+        .user_message(ContentBlock::text(
+            "This is image 2. What are the differences between these images?",
+        ))
         .build();
 
     match client.execute_chat(multi_image_request).await {
@@ -82,7 +94,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
             println!("User: I'm going to show you two images. Please compare them.");
             println!("User: [Sent red pixel image] This is image 1.");
             println!("User: [Sent blue pixel image] This is image 2. What are the differences?");
-            
+
             for content in response.content {
                 if let ContentBlock::Text { text, .. } = content {
                     println!("Claude: {}", text);
@@ -95,7 +107,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // Example 3: Different image formats
     println!("\n3. Different Image Formats");
     println!("=========================");
-    
+
     // Demonstrate different image format support
     let formats = vec![
         (ImageMediaType::Png, "PNG format"),
@@ -106,19 +118,26 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     for (format, description) in formats {
         println!("📸 Testing {} support...", description);
-        
-        let format_request = client.chat_builder()
-            .user_message(ContentBlock::image_base64(format.clone(), test_image_base64.to_string()))
-            .user_message(ContentBlock::text(&format!("This image is in {} format. Can you confirm you can see it?", description)))
+
+        let format_request = client
+            .chat_builder()
+            .user_message(ContentBlock::image_base64(
+                format.clone(),
+                test_image_base64.to_string(),
+            ))
+            .user_message(ContentBlock::text(&format!(
+                "This image is in {} format. Can you confirm you can see it?",
+                description
+            )))
             .build();
 
         match client.execute_chat(format_request).await {
             Ok(response) => {
                 if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
-                    let preview = if text.len() > 100 { 
-                        format!("{}...", &text[..100]) 
-                    } else { 
-                        text.clone() 
+                    let preview = if text.len() > 100 {
+                        format!("{}...", &text[..100])
+                    } else {
+                        text.clone()
                     };
                     println!("   ✅ {}: {}", description, preview);
                 }
@@ -129,15 +148,17 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     println!("\n=== Multimodal Examples Complete ===");
     println!("💡 Try running with a valid ANTHROPIC_API_KEY and real images!");
-    
+
     Ok(())
 }
 
 /// Helper function to load and encode an image file (for reference)
 #[allow(dead_code)]
-fn load_image_as_base64(file_path: &str) -> std::result::Result<String, Box<dyn std::error::Error>> {
+fn load_image_as_base64(
+    file_path: &str,
+) -> std::result::Result<String, Box<dyn std::error::Error>> {
     let image_bytes = std::fs::read(file_path)?;
-    use base64::{Engine as _, engine::general_purpose};
+    use base64::{engine::general_purpose, Engine as _};
     Ok(general_purpose::STANDARD.encode(&image_bytes))
 }
 
@@ -157,6 +178,6 @@ fn get_media_type_from_extension(file_path: &str) -> ImageMediaType {
 /// Helper function to validate image data
 #[allow(dead_code)]
 fn validate_image_data(base64_data: &str) -> bool {
-    use base64::{Engine as _, engine::general_purpose};
+    use base64::{engine::general_purpose, Engine as _};
     general_purpose::STANDARD.decode(base64_data).is_ok()
 }

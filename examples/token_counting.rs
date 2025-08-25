@@ -6,8 +6,8 @@
 //! - Ensuring messages fit within model token limits
 //! - Optimizing prompt length for better performance
 
-use anthropic_rust::{Client, Model, Result};
 use anthropic_rust::types::{ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage};
+use anthropic_rust::{Client, Model, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -87,7 +87,10 @@ async fn main() -> Result<()> {
 
     match client.count_tokens(multimodal_request).await {
         Ok(token_count) => {
-            println!("Multimodal message token count: {}", token_count.input_tokens);
+            println!(
+                "Multimodal message token count: {}",
+                token_count.input_tokens
+            );
         }
         Err(e) => {
             println!("Error counting tokens: {}", e);
@@ -96,7 +99,7 @@ async fn main() -> Result<()> {
 
     // Example 4: Count tokens with tools
     println!("\n=== Example 4: Message with Tools ===");
-    
+
     // Create a simple calculator tool
     let calculator_tool = anthropic_rust::tools::Tool::new("calculator")
         .description("A simple calculator that can perform basic arithmetic operations")
@@ -113,7 +116,7 @@ async fn main() -> Result<()> {
                     "description": "The first number"
                 },
                 "b": {
-                    "type": "number", 
+                    "type": "number",
                     "description": "The second number"
                 }
             },
@@ -135,7 +138,10 @@ async fn main() -> Result<()> {
 
     match client.count_tokens(tools_request).await {
         Ok(token_count) => {
-            println!("Message with tools token count: {}", token_count.input_tokens);
+            println!(
+                "Message with tools token count: {}",
+                token_count.input_tokens
+            );
         }
         Err(e) => {
             println!("Error counting tokens: {}", e);
@@ -147,7 +153,9 @@ async fn main() -> Result<()> {
     let test_message = CountTokensRequest {
         messages: vec![MessageParam {
             role: Role::User,
-            content: vec![ContentBlock::text("This is a test message to compare token counts across different Claude models.")],
+            content: vec![ContentBlock::text(
+                "This is a test message to compare token counts across different Claude models.",
+            )],
         }],
         system: None,
         tools: None,
@@ -161,7 +169,9 @@ async fn main() -> Result<()> {
 
     for model in models {
         let model_client = Client::builder()
-            .api_key(std::env::var("ANTHROPIC_API_KEY").unwrap_or_else(|_| "your-api-key".to_string()))
+            .api_key(
+                std::env::var("ANTHROPIC_API_KEY").unwrap_or_else(|_| "your-api-key".to_string()),
+            )
             .model(model.clone())
             .build()?;
 
@@ -177,9 +187,10 @@ async fn main() -> Result<()> {
 
     // Example 6: Convert ChatRequest to CountTokensRequest
     println!("\n=== Example 6: Converting ChatRequest to CountTokensRequest ===");
-    
+
     // Build a chat request using the builder
-    let chat_request = client.chat_builder()
+    let chat_request = client
+        .chat_builder()
         .user_message(ContentBlock::text("What's the weather like today?"))
         .system("You are a helpful weather assistant.")
         .temperature(0.7)
@@ -190,7 +201,10 @@ async fn main() -> Result<()> {
 
     match client.count_tokens(count_request).await {
         Ok(token_count) => {
-            println!("Converted chat request token count: {}", token_count.input_tokens);
+            println!(
+                "Converted chat request token count: {}",
+                token_count.input_tokens
+            );
         }
         Err(e) => {
             println!("Error counting tokens: {}", e);

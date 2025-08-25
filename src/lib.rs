@@ -32,34 +32,37 @@ pub mod types;
 
 // Test modules
 #[cfg(test)]
-mod types_test;
+mod config_test;
 #[cfg(test)]
 mod error_test;
 #[cfg(test)]
-mod config_test;
-#[cfg(test)]
 mod property_tests;
+#[cfg(test)]
+mod types_test;
 
+#[cfg(test)]
+mod advanced_config_test;
 #[cfg(test)]
 mod client_test;
 #[cfg(test)]
 mod streaming_test;
-#[cfg(test)]
-mod advanced_config_test;
 
 // Re-export commonly used types for convenience
-pub use client::{Client, RetryConfig, RequestMiddleware, RequestInterceptor, LoggingInterceptor};
+pub use client::{Client, LoggingInterceptor, RequestInterceptor, RequestMiddleware, RetryConfig};
 pub use config::{ClientBuilder, Config};
 pub use error::Error;
-pub use streaming::{MessageStream, MessageAccumulator, StreamEvent, ContentDelta, MessageDelta, PartialMessage};
+pub use streaming::{
+    ContentDelta, MessageAccumulator, MessageDelta, MessageStream, PartialMessage, StreamEvent,
+};
 pub use tools::{Tool, ToolBuilder};
 pub use types::{
-    ChatRequest, ChatRequestBuilder, ContentBlock, ImageMediaType, ImageSource, DocumentSource, DocumentMediaType,
-    Message, MessageParam, Model, Role, StopReason, Usage, SystemMessage, CountTokensRequest, TokenCount,
+    ChatRequest, ChatRequestBuilder, ContentBlock, CountTokensRequest, DocumentMediaType,
+    DocumentSource, ImageMediaType, ImageSource, Message, MessageParam, Model, Role, StopReason,
+    SystemMessage, TokenCount, Usage,
 };
 
 // Re-export multimodal utilities for convenience
-pub use multimodal::{ImageUtils, DocumentUtils, Base64Utils, MimeUtils, validate_url};
+pub use multimodal::{validate_url, Base64Utils, DocumentUtils, ImageUtils, MimeUtils};
 
 /// Result type alias for the SDK
 pub type Result<T> = std::result::Result<T, Error>;

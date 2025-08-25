@@ -10,14 +10,14 @@
 //! Run with: cargo run --example conversation
 
 use anthropic_rust::{
-    Client, Model, ContentBlock, Role, MessageParam,
     types::{ChatRequest, SystemMessage},
+    Client, ContentBlock, MessageParam, Model, Role,
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    
+
     println!("=== Anthropic Rust SDK - Conversation Examples ===\n");
 
     // Create client
@@ -36,8 +36,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Simple back-and-forth conversation
     println!("1. Simple Conversation");
     println!("=====================");
-    
-    let conversation = client.chat_builder()
+
+    let conversation = client
+        .chat_builder()
         .system("You are a helpful assistant. Be concise but friendly.")
         .user_message(ContentBlock::text("Hi! What's your name?"))
         .build();
@@ -48,9 +49,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
                 println!("Claude: {}", text);
             }
-            
+
             // Continue the conversation
-            let follow_up = client.chat_builder()
+            let follow_up = client
+                .chat_builder()
                 .system("You are a helpful assistant. Be concise but friendly.")
                 .user_message(ContentBlock::text("Hi! What's your name?"))
                 .assistant_message(response.content[0].clone())
@@ -70,20 +72,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 2: Multi-turn conversation with context
     println!("\n2. Multi-turn Conversation with Context");
     println!("======================================");
-    
-    let mut conversation_history = vec![
-        MessageParam {
-            role: Role::User,
-            content: vec![ContentBlock::text("I'm planning a trip to Japan. What should I know?")],
-        }
-    ];
+
+    let mut conversation_history = vec![MessageParam {
+        role: Role::User,
+        content: vec![ContentBlock::text(
+            "I'm planning a trip to Japan. What should I know?",
+        )],
+    }];
 
     // First exchange
     let request = ChatRequest {
         messages: conversation_history.clone(),
         system: Some(vec![SystemMessage {
             message_type: "text".to_string(),
-            text: "You are a knowledgeable travel advisor. Provide helpful, practical advice.".to_string(),
+            text: "You are a knowledgeable travel advisor. Provide helpful, practical advice."
+                .to_string(),
         }]),
         tools: None,
         temperature: Some(0.7),
@@ -96,25 +99,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("User: I'm planning a trip to Japan. What should I know?");
             if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
                 println!("Claude: {}", text);
-                
+
                 // Add to conversation history
                 conversation_history.push(MessageParam {
                     role: Role::Assistant,
                     content: response.content.clone(),
                 });
             }
-            
+
             // Follow-up question
             conversation_history.push(MessageParam {
                 role: Role::User,
-                content: vec![ContentBlock::text("What about the best time to visit for cherry blossoms?")],
+                content: vec![ContentBlock::text(
+                    "What about the best time to visit for cherry blossoms?",
+                )],
             });
 
             let follow_up_request = ChatRequest {
                 messages: conversation_history.clone(),
                 system: Some(vec![SystemMessage {
                     message_type: "text".to_string(),
-                    text: "You are a knowledgeable travel advisor. Provide helpful, practical advice.".to_string(),
+                    text:
+                        "You are a knowledgeable travel advisor. Provide helpful, practical advice."
+                            .to_string(),
                 }]),
                 tools: None,
                 temperature: Some(0.7),
@@ -147,10 +154,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(response) => {
             println!("📊 Formal Business Style:");
             if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
-                let preview = if text.len() > 200 { 
-                    format!("{}...", &text[..200]) 
-                } else { 
-                    text.clone() 
+                let preview = if text.len() > 200 {
+                    format!("{}...", &text[..200])
+                } else {
+                    text.clone()
                 };
                 println!("   {}", preview);
             }
@@ -159,9 +166,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Casual style
-    let casual_request = client.chat_builder()
+    let casual_request = client
+        .chat_builder()
         .system("You are a friendly, casual helper. Use informal language and be conversational.")
-        .user_message(ContentBlock::text("How can I improve my team's productivity?"))
+        .user_message(ContentBlock::text(
+            "How can I improve my team's productivity?",
+        ))
         .temperature(0.8) // Higher temperature for more creative, varied responses
         .build();
 
@@ -169,10 +179,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(response) => {
             println!("\n😊 Casual Friendly Style:");
             if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
-                let preview = if text.len() > 200 { 
-                    format!("{}...", &text[..200]) 
-                } else { 
-                    text.clone() 
+                let preview = if text.len() > 200 {
+                    format!("{}...", &text[..200])
+                } else {
+                    text.clone()
                 };
                 println!("   {}", preview);
             }
@@ -185,43 +195,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("===============================");
     println!("💡 This would start an interactive chat session.");
     println!("   Uncomment the code below to try it!");
-    
+
     /*
     // Uncomment this section for interactive mode
     println!("Starting interactive conversation with Claude...");
     println!("Type 'quit' to exit, 'clear' to start fresh conversation\n");
-    
+
     let mut interactive_history: Vec<MessageParam> = Vec::new();
-    
+
     loop {
         print!("You: ");
         io::stdout().flush()?;
-        
+
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
         let input = input.trim();
-        
+
         if input.is_empty() {
             continue;
         }
-        
+
         if input == "quit" {
             println!("Goodbye!");
             break;
         }
-        
+
         if input == "clear" {
             interactive_history.clear();
             println!("Conversation cleared!");
             continue;
         }
-        
+
         // Add user message to history
         interactive_history.push(MessageParam {
             role: Role::User,
             content: vec![ContentBlock::text(input.to_string())],
         });
-        
+
         // Create request with full history
         let interactive_request = ChatRequest {
             messages: interactive_history.clone(),
@@ -234,12 +244,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             top_p: None,
             stop_sequences: None,
         };
-        
+
         match client.execute_chat(interactive_request).await {
             Ok(response) => {
                 if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
                     println!("Claude: {}", text);
-                    
+
                     // Add Claude's response to history
                     interactive_history.push(MessageParam {
                         role: Role::Assistant,
@@ -253,7 +263,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 interactive_history.pop();
             }
         }
-        
+
         println!();
     }
     */
@@ -261,23 +271,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 5: Conversation with different models
     println!("\n5. Model Comparison in Conversation");
     println!("==================================");
-    
+
     let question = "Explain quantum computing in simple terms.";
     println!("Question: {}", question);
-    
-    let request = client.chat_builder()
+
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text(question))
         .build();
 
     // Try with Haiku (fast, concise)
-    match client.execute_chat_with_model(Model::Claude3Haiku20240307, request.clone()).await {
+    match client
+        .execute_chat_with_model(Model::Claude3Haiku20240307, request.clone())
+        .await
+    {
         Ok(response) => {
             println!("\n🏃 Haiku Response (fast & concise):");
             if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
-                let preview = if text.len() > 150 { 
-                    format!("{}...", &text[..150]) 
-                } else { 
-                    text.clone() 
+                let preview = if text.len() > 150 {
+                    format!("{}...", &text[..150])
+                } else {
+                    text.clone()
                 };
                 println!("   {}", preview);
             }
@@ -286,14 +300,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Try with Sonnet (balanced)
-    match client.execute_chat_with_model(Model::Claude35Sonnet20241022, request.clone()).await {
+    match client
+        .execute_chat_with_model(Model::Claude35Sonnet20241022, request.clone())
+        .await
+    {
         Ok(response) => {
             println!("\n🎵 Sonnet Response (balanced):");
             if let Some(ContentBlock::Text { text, .. }) = response.content.first() {
-                let preview = if text.len() > 150 { 
-                    format!("{}...", &text[..150]) 
-                } else { 
-                    text.clone() 
+                let preview = if text.len() > 150 {
+                    format!("{}...", &text[..150])
+                } else {
+                    text.clone()
                 };
                 println!("   {}", preview);
             }
@@ -303,7 +320,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n=== Conversation Examples Complete ===");
     println!("💡 Try running with a valid ANTHROPIC_API_KEY to see real responses!");
-    
+
     Ok(())
 }
 
@@ -324,14 +341,20 @@ fn _print_conversation_history(history: &[MessageParam]) {
             Role::User => "👤",
             Role::Assistant => "🤖",
         };
-        
+
         if let Some(ContentBlock::Text { text, .. }) = message.content.first() {
-            let preview = if text.len() > 100 { 
-                format!("{}...", &text[..100]) 
-            } else { 
-                text.clone() 
+            let preview = if text.len() > 100 {
+                format!("{}...", &text[..100])
+            } else {
+                text.clone()
             };
-            println!("   {}. {} {:?}: {}", i + 1, role_emoji, message.role, preview);
+            println!(
+                "   {}. {} {:?}: {}",
+                i + 1,
+                role_emoji,
+                message.role,
+                preview
+            );
         }
     }
     println!();

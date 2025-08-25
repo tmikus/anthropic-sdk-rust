@@ -1,10 +1,10 @@
 //! Performance benchmarks for critical code paths
 
 use anthropic_rust::{
-    Client, Model, ContentBlock, Role, MessageParam, Tool,
-    types::{ChatRequest, SystemMessage, Usage, Message, StopReason},
+    types::{ChatRequest, Message, StopReason, SystemMessage, Usage},
+    Client, ContentBlock, MessageParam, Model, Role, Tool,
 };
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use serde_json;
 use std::time::Duration;
 
@@ -13,7 +13,9 @@ fn create_simple_message() -> Message {
     Message {
         id: "msg_bench_123".to_string(),
         role: Role::Assistant,
-        content: vec![ContentBlock::text("This is a benchmark message for performance testing.")],
+        content: vec![ContentBlock::text(
+            "This is a benchmark message for performance testing.",
+        )],
         model: Model::Claude35Sonnet20241022,
         stop_reason: Some(StopReason::EndTurn),
         stop_sequence: None,
@@ -57,7 +59,12 @@ fn create_complex_message() -> Message {
 
 fn create_large_message(content_blocks: usize) -> Message {
     let content = (0..content_blocks)
-        .map(|i| ContentBlock::text(format!("Content block number {} with some text content.", i)))
+        .map(|i| {
+            ContentBlock::text(format!(
+                "Content block number {} with some text content.",
+                i
+            ))
+        })
         .collect();
 
     Message {
@@ -79,7 +86,11 @@ fn create_large_message(content_blocks: usize) -> Message {
 fn create_chat_request(messages: usize) -> ChatRequest {
     let messages = (0..messages)
         .map(|i| MessageParam {
-            role: if i % 2 == 0 { Role::User } else { Role::Assistant },
+            role: if i % 2 == 0 {
+                Role::User
+            } else {
+                Role::Assistant
+            },
             content: vec![ContentBlock::text(format!("Message number {}", i))],
         })
         .collect();
@@ -90,19 +101,17 @@ fn create_chat_request(messages: usize) -> ChatRequest {
             message_type: "text".to_string(),
             text: "You are a helpful assistant for benchmarking.".to_string(),
         }]),
-        tools: Some(vec![
-            Tool::new("calculator")
-                .description("Perform calculations")
-                .schema_value(serde_json::json!({
-                    "type": "object",
-                    "properties": {
-                        "operation": {"type": "string"},
-                        "a": {"type": "number"},
-                        "b": {"type": "number"}
-                    }
-                }))
-                .build(),
-        ]),
+        tools: Some(vec![Tool::new("calculator")
+            .description("Perform calculations")
+            .schema_value(serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "operation": {"type": "string"},
+                    "a": {"type": "number"},
+                    "b": {"type": "number"}
+                }
+            }))
+            .build()]),
         temperature: Some(0.7),
         top_p: Some(0.9),
         stop_sequences: Some(vec!["STOP".to_string(), "END".to_string()]),
@@ -112,17 +121,17 @@ fn create_chat_request(messages: usize) -> ChatRequest {
 // Serialization benchmarks
 fn bench_message_serialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("message_serialization");
-    
+
     let simple_message = create_simple_message();
     let complex_message = create_complex_message();
-    
+
     group.bench_function("simple_message", |b| {
         b.iter(|| {
             let json = serde_json::to_string(black_box(&simple_message)).unwrap();
             black_box(json);
         })
     });
-    
+
     group.bench_function("complex_message", |b| {
         b.iter(|| {
             let json = serde_json::to_string(black_box(&complex_message)).unwrap();
@@ -133,37 +142,33 @@ fn bench_message_serialization(c: &mut Criterion) {
     // Benchmark different message sizes
     for size in [1, 5, 10, 50, 100].iter() {
         let large_message = create_large_message(*size);
-        group.bench_with_input(
-            BenchmarkId::new("large_message", size),
-            size,
-            |b, _| {
-                b.iter(|| {
-                    let json = serde_json::to_string(black_box(&large_message)).unwrap();
-                    black_box(json);
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("large_message", size), size, |b, _| {
+            b.iter(|| {
+                let json = serde_json::to_string(black_box(&large_message)).unwrap();
+                black_box(json);
+            })
+        });
     }
-    
+
     group.finish();
 }
 
 fn bench_message_deserialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("message_deserialization");
-    
+
     let simple_message = create_simple_message();
     let complex_message = create_complex_message();
-    
+
     let simple_json = serde_json::to_string(&simple_message).unwrap();
     let complex_json = serde_json::to_string(&complex_message).unwrap();
-    
+
     group.bench_function("simple_message", |b| {
         b.iter(|| {
             let message: Message = serde_json::from_str(black_box(&simple_json)).unwrap();
             black_box(message);
         })
     });
-    
+
     group.bench_function("complex_message", |b| {
         b.iter(|| {
             let message: Message = serde_json::from_str(black_box(&complex_json)).unwrap();
@@ -175,89 +180,79 @@ fn bench_message_deserialization(c: &mut Criterion) {
     for size in [1, 5, 10, 50, 100].iter() {
         let large_message = create_large_message(*size);
         let large_json = serde_json::to_string(&large_message).unwrap();
-        group.bench_with_input(
-            BenchmarkId::new("large_message", size),
-            size,
-            |b, _| {
-                b.iter(|| {
-                    let message: Message = serde_json::from_str(black_box(&large_json)).unwrap();
-                    black_box(message);
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("large_message", size), size, |b, _| {
+            b.iter(|| {
+                let message: Message = serde_json::from_str(black_box(&large_json)).unwrap();
+                black_box(message);
+            })
+        });
     }
-    
+
     group.finish();
 }
 
 fn bench_chat_request_serialization(c: &mut Criterion) {
     let mut group = c.benchmark_group("chat_request_serialization");
-    
+
     // Benchmark different request sizes
     for size in [1, 5, 10, 25, 50].iter() {
         let request = create_chat_request(*size);
-        group.bench_with_input(
-            BenchmarkId::new("messages", size),
-            size,
-            |b, _| {
-                b.iter(|| {
-                    let json = serde_json::to_string(black_box(&request)).unwrap();
-                    black_box(json);
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("messages", size), size, |b, _| {
+            b.iter(|| {
+                let json = serde_json::to_string(black_box(&request)).unwrap();
+                black_box(json);
+            })
+        });
     }
-    
+
     group.finish();
 }
 
 fn bench_content_block_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("content_block_creation");
-    
+
     group.bench_function("text_block", |b| {
         b.iter(|| {
             let block = ContentBlock::text(black_box("This is a test message"));
             black_box(block);
         })
     });
-    
+
     group.bench_function("image_base64_block", |b| {
         b.iter(|| {
             let block = ContentBlock::image_base64(
                 black_box(anthropic_rust::ImageMediaType::Png),
-                black_box("base64encodeddata".to_string())
+                black_box("base64encodeddata".to_string()),
             );
             black_box(block);
         })
     });
-    
+
     group.bench_function("tool_use_block", |b| {
         b.iter(|| {
             let block = ContentBlock::tool_use(
                 black_box("tool_id"),
                 black_box("tool_name"),
-                black_box(serde_json::json!({"param": "value"}))
-            ).unwrap();
+                black_box(serde_json::json!({"param": "value"})),
+            )
+            .unwrap();
             black_box(block);
         })
     });
-    
+
     group.bench_function("tool_result_block", |b| {
         b.iter(|| {
-            let block = ContentBlock::tool_result(
-                black_box("tool_id"),
-                black_box("Result text")
-            );
+            let block = ContentBlock::tool_result(black_box("tool_id"), black_box("Result text"));
             black_box(block);
         })
     });
-    
+
     group.finish();
 }
 
 fn bench_client_builder(c: &mut Criterion) {
     let mut group = c.benchmark_group("client_builder");
-    
+
     group.bench_function("basic_client", |b| {
         b.iter(|| {
             let client = Client::builder()
@@ -268,7 +263,7 @@ fn bench_client_builder(c: &mut Criterion) {
             black_box(client);
         })
     });
-    
+
     group.bench_function("full_config_client", |b| {
         b.iter(|| {
             let client = Client::builder()
@@ -284,30 +279,32 @@ fn bench_client_builder(c: &mut Criterion) {
             black_box(client);
         })
     });
-    
+
     group.finish();
 }
 
 fn bench_chat_request_builder(c: &mut Criterion) {
     let mut group = c.benchmark_group("chat_request_builder");
-    
+
     let client = Client::builder()
         .api_key("sk-ant-api03-test-key")
         .build()
         .unwrap();
-    
+
     group.bench_function("simple_request", |b| {
         b.iter(|| {
-            let request = client.chat_builder()
+            let request = client
+                .chat_builder()
                 .user_message(black_box(ContentBlock::text("Hello")))
                 .build();
             black_box(request);
         })
     });
-    
+
     group.bench_function("complex_request", |b| {
         b.iter(|| {
-            let request = client.chat_builder()
+            let request = client
+                .chat_builder()
                 .system(black_box("You are helpful"))
                 .user_message(black_box(ContentBlock::text("Hello")))
                 .assistant_message(black_box(ContentBlock::text("Hi there!")))
@@ -317,41 +314,35 @@ fn bench_chat_request_builder(c: &mut Criterion) {
             black_box(request);
         })
     });
-    
+
     // Benchmark building requests with many messages
     for size in [5, 10, 25, 50].iter() {
-        group.bench_with_input(
-            BenchmarkId::new("many_messages", size),
-            size,
-            |b, &size| {
-                b.iter(|| {
-                    let mut builder = client.chat_builder();
-                    for i in 0..size {
-                        builder = builder.user_message(
-                            black_box(ContentBlock::text(format!("Message {}", i)))
-                        );
-                    }
-                    let request = builder.build();
-                    black_box(request);
-                })
-            },
-        );
+        group.bench_with_input(BenchmarkId::new("many_messages", size), size, |b, &size| {
+            b.iter(|| {
+                let mut builder = client.chat_builder();
+                for i in 0..size {
+                    builder = builder
+                        .user_message(black_box(ContentBlock::text(format!("Message {}", i))));
+                }
+                let request = builder.build();
+                black_box(request);
+            })
+        });
     }
-    
+
     group.finish();
 }
 
 fn bench_tool_creation(c: &mut Criterion) {
     let mut group = c.benchmark_group("tool_creation");
-    
+
     group.bench_function("simple_tool", |b| {
         b.iter(|| {
-            let tool = Tool::new(black_box("calculator"))
-                .build();
+            let tool = Tool::new(black_box("calculator")).build();
             black_box(tool);
         })
     });
-    
+
     group.bench_function("complex_tool", |b| {
         b.iter(|| {
             let tool = Tool::new(black_box("calculator"))
@@ -369,13 +360,13 @@ fn bench_tool_creation(c: &mut Criterion) {
             black_box(tool);
         })
     });
-    
+
     group.finish();
 }
 
 fn bench_error_handling(c: &mut Criterion) {
     let mut group = c.benchmark_group("error_handling");
-    
+
     group.bench_function("error_creation", |b| {
         b.iter(|| {
             let error = anthropic_rust::Error::Api {
@@ -387,7 +378,7 @@ fn bench_error_handling(c: &mut Criterion) {
             black_box(error);
         })
     });
-    
+
     group.bench_function("error_categorization", |b| {
         let error = anthropic_rust::Error::Api {
             status: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
@@ -395,7 +386,7 @@ fn bench_error_handling(c: &mut Criterion) {
             error_type: None,
             request_id: None,
         };
-        
+
         b.iter(|| {
             let is_retryable = black_box(&error).is_retryable();
             let is_server_error = black_box(&error).is_server_error();
@@ -403,13 +394,13 @@ fn bench_error_handling(c: &mut Criterion) {
             black_box((is_retryable, is_server_error, is_auth_error));
         })
     });
-    
+
     group.finish();
 }
 
 fn bench_model_operations(c: &mut Criterion) {
     let mut group = c.benchmark_group("model_operations");
-    
+
     let models = [
         Model::Claude3Haiku20240307,
         Model::Claude3Sonnet20240229,
@@ -418,7 +409,7 @@ fn bench_model_operations(c: &mut Criterion) {
         Model::Claude35Sonnet20250114,
         Model::Claude4Sonnet20250514,
     ];
-    
+
     group.bench_function("max_tokens_lookup", |b| {
         b.iter(|| {
             for model in &models {
@@ -427,7 +418,7 @@ fn bench_model_operations(c: &mut Criterion) {
             }
         })
     });
-    
+
     group.bench_function("model_serialization", |b| {
         b.iter(|| {
             for model in &models {
@@ -436,13 +427,13 @@ fn bench_model_operations(c: &mut Criterion) {
             }
         })
     });
-    
+
     group.finish();
 }
 
 fn bench_memory_usage(c: &mut Criterion) {
     let mut group = c.benchmark_group("memory_usage");
-    
+
     // Benchmark memory allocation patterns
     group.bench_function("large_message_creation", |b| {
         b.iter(|| {
@@ -450,7 +441,7 @@ fn bench_memory_usage(c: &mut Criterion) {
             black_box(message);
         })
     });
-    
+
     group.bench_function("message_cloning", |b| {
         let message = create_complex_message();
         b.iter(|| {
@@ -458,28 +449,28 @@ fn bench_memory_usage(c: &mut Criterion) {
             black_box(cloned);
         })
     });
-    
+
     group.bench_function("client_cloning", |b| {
         let client = Client::builder()
             .api_key("sk-ant-api03-test-key")
             .build()
             .unwrap();
-        
+
         b.iter(|| {
             let cloned = black_box(&client).clone();
             black_box(cloned);
         })
     });
-    
+
     group.finish();
 }
 
 // Benchmark streaming-related operations
 fn bench_streaming_operations(c: &mut Criterion) {
-    use anthropic_rust::streaming::{StreamEvent, ContentDelta, MessageDelta, PartialMessage};
-    
+    use anthropic_rust::streaming::{ContentDelta, MessageDelta, PartialMessage, StreamEvent};
+
     let mut group = c.benchmark_group("streaming_operations");
-    
+
     let stream_events = vec![
         StreamEvent::MessageStart {
             message: PartialMessage {
@@ -528,7 +519,7 @@ fn bench_streaming_operations(c: &mut Criterion) {
         },
         StreamEvent::MessageStop,
     ];
-    
+
     group.bench_function("stream_event_serialization", |b| {
         b.iter(|| {
             for event in &stream_events {
@@ -537,12 +528,12 @@ fn bench_streaming_operations(c: &mut Criterion) {
             }
         })
     });
-    
+
     let stream_events_json: Vec<String> = stream_events
         .iter()
         .map(|e| serde_json::to_string(e).unwrap())
         .collect();
-    
+
     group.bench_function("stream_event_deserialization", |b| {
         b.iter(|| {
             for json in &stream_events_json {
@@ -551,7 +542,7 @@ fn bench_streaming_operations(c: &mut Criterion) {
             }
         })
     });
-    
+
     group.finish();
 }
 

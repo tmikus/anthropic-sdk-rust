@@ -2,11 +2,11 @@
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
     use serde_json::json;
+    use std::time::Duration;
 
     use crate::{
-        client::{ClientInner, RetryConfig, RequestMiddleware},
+        client::{ClientInner, RequestMiddleware, RetryConfig},
         config::Config,
         error::Error,
         types::Model,
@@ -38,7 +38,7 @@ mod tests {
     #[tokio::test]
     async fn test_successful_request() {
         let client = create_test_client();
-        
+
         // Use httpbin's /json endpoint which returns a JSON response
         let result: serde_json::Value = client
             .execute_request(reqwest::Method::GET, "/json", None)
@@ -52,14 +52,14 @@ mod tests {
     #[tokio::test]
     async fn test_404_error_handling() {
         let client = create_test_client();
-        
+
         let result: Result<serde_json::Value, Error> = client
             .execute_request(reqwest::Method::GET, "/status/404", None)
             .await;
 
         assert!(result.is_err());
         let error = result.unwrap_err();
-        
+
         match error {
             Error::InvalidRequest(_) => {
                 // Expected for 404 responses
@@ -71,14 +71,14 @@ mod tests {
     #[tokio::test]
     async fn test_500_error_retryable() {
         let client = create_test_client();
-        
+
         let result: Result<serde_json::Value, Error> = client
             .execute_request(reqwest::Method::GET, "/status/500", None)
             .await;
 
         assert!(result.is_err());
         let error = result.unwrap_err();
-        
+
         // 500 errors should be retryable
         assert!(error.is_retryable());
         assert!(error.is_server_error());
@@ -90,7 +90,7 @@ mod tests {
             api_key: "sk-ant-api03-test-key".to_string(),
             base_url: "https://httpbin.org".parse().unwrap(),
             timeout: Duration::from_millis(1), // Very short timeout
-            max_retries: 0, // No retries to speed up test
+            max_retries: 0,                    // No retries to speed up test
             model: Model::Claude35Sonnet20241022,
             max_tokens: 1000,
         };
@@ -109,7 +109,7 @@ mod tests {
             },
             middleware: RequestMiddleware::default(),
         };
-        
+
         // Use httpbin's /delay endpoint which will likely timeout
         let result: Result<serde_json::Value, Error> = client
             .execute_request(reqwest::Method::GET, "/delay/2", None)
@@ -117,7 +117,7 @@ mod tests {
 
         assert!(result.is_err());
         let error = result.unwrap_err();
-        
+
         // Should be a timeout or network error
         assert!(error.is_network_error() || matches!(error, Error::Timeout { .. }));
     }
@@ -125,12 +125,12 @@ mod tests {
     #[tokio::test]
     async fn test_post_request_with_body() {
         let client = create_test_client();
-        
+
         let test_data = json!({
             "test": "data",
             "number": 42
         });
-        
+
         // Use httpbin's /post endpoint which echoes the request
         let result: serde_json::Value = client
             .execute_request(reqwest::Method::POST, "/post", Some(test_data.clone()))
@@ -147,13 +147,13 @@ mod tests {
     #[tokio::test]
     async fn test_request_id_extraction() {
         let client = create_test_client();
-        
+
         // Use httpbin's /response-headers endpoint to set custom headers
         let result: Result<serde_json::Value, Error> = client
             .execute_request(
-                reqwest::Method::GET, 
-                "/response-headers?request-id=test-123", 
-                None
+                reqwest::Method::GET,
+                "/response-headers?request-id=test-123",
+                None,
             )
             .await;
 
@@ -184,7 +184,7 @@ mod tests {
             retry_config: RetryConfig::default(),
             middleware: RequestMiddleware::default().with_full_logging(),
         };
-        
+
         // This test mainly verifies that logging doesn't crash
         // In a real scenario, you'd capture the log output
         let result: serde_json::Value = client
@@ -222,7 +222,7 @@ mod tests {
             },
             middleware: RequestMiddleware::default().with_request_logging(),
         };
-        
+
         // Use a 500 error which should be retried
         let result: Result<serde_json::Value, Error> = client
             .execute_request(reqwest::Method::GET, "/status/500", None)
@@ -230,7 +230,7 @@ mod tests {
 
         assert!(result.is_err());
         let error = result.unwrap_err();
-        
+
         // Should still fail after retries, but verify it's retryable
         assert!(error.is_retryable());
     }
@@ -238,7 +238,7 @@ mod tests {
     #[tokio::test]
     async fn test_invalid_json_response() {
         let client = create_test_client();
-        
+
         // Use httpbin's /html endpoint which returns HTML, not JSON
         let result: Result<serde_json::Value, Error> = client
             .execute_request(reqwest::Method::GET, "/html", None)
@@ -246,12 +246,15 @@ mod tests {
 
         assert!(result.is_err());
         let error = result.unwrap_err();
-        
+
         match error {
             Error::InvalidResponse(_) => {
                 // Expected for non-JSON responses
             }
-            _ => panic!("Expected InvalidResponse error for HTML response, got: {:?}", error),
+            _ => panic!(
+                "Expected InvalidResponse error for HTML response, got: {:?}",
+                error
+            ),
         }
     }
 
@@ -259,21 +262,21 @@ mod tests {
     async fn test_error_categories() {
         // Test that different HTTP status codes map to correct error categories
         let client = create_test_client();
-        
+
         // Test 401 Unauthorized
         let result: Result<serde_json::Value, Error> = client
             .execute_request(reqwest::Method::GET, "/status/401", None)
             .await;
-        
+
         if let Err(error) = result {
             assert!(error.is_auth_error());
         }
 
-        // Test 403 Forbidden  
+        // Test 403 Forbidden
         let result: Result<serde_json::Value, Error> = client
             .execute_request(reqwest::Method::GET, "/status/403", None)
             .await;
-        
+
         if let Err(error) = result {
             assert!(error.is_auth_error());
         }
@@ -282,7 +285,7 @@ mod tests {
         let result: Result<serde_json::Value, Error> = client
             .execute_request(reqwest::Method::GET, "/status/429", None)
             .await;
-        
+
         if let Err(error) = result {
             assert!(error.is_rate_limit_error());
             assert!(error.is_retryable());
@@ -320,17 +323,17 @@ mod tests {
 
     #[test]
     fn test_extract_request_id() {
-        use reqwest::header::{HeaderMap, HeaderValue};
         use crate::client::extract_request_id;
+        use reqwest::header::{HeaderMap, HeaderValue};
 
         let mut headers = HeaderMap::new();
         headers.insert("request-id", HeaderValue::from_static("req-123"));
-        
+
         assert_eq!(extract_request_id(&headers), Some("req-123".to_string()));
 
         let mut headers = HeaderMap::new();
         headers.insert("x-request-id", HeaderValue::from_static("req-456"));
-        
+
         assert_eq!(extract_request_id(&headers), Some("req-456".to_string()));
 
         let headers = HeaderMap::new();
@@ -356,7 +359,10 @@ mod tests {
 
     #[test]
     fn test_client_chat_builder_integration() {
-        use crate::{Client, types::{ContentBlock, Role}};
+        use crate::{
+            types::{ContentBlock, Role},
+            Client,
+        };
 
         // Create a client with specific model and max_tokens
         let client = Client::builder()
@@ -372,9 +378,7 @@ mod tests {
 
         // Test that chat_builder works
         let builder = client.chat_builder();
-        let request = builder
-            .user_message(ContentBlock::text("Hello!"))
-            .build();
+        let request = builder.user_message(ContentBlock::text("Hello!")).build();
 
         assert_eq!(request.messages.len(), 1);
         assert_eq!(request.messages[0].role, Role::User);
@@ -420,8 +424,8 @@ mod tests {
         // Set environment variable for the test
         std::env::set_var("ANTHROPIC_API_KEY", "sk-ant-api03-test-key");
 
-        let client = Client::new(Model::Claude3Haiku20240307)
-            .expect("Client::new should work with env var");
+        let client =
+            Client::new(Model::Claude3Haiku20240307).expect("Client::new should work with env var");
 
         assert_eq!(client.default_model(), Model::Claude3Haiku20240307);
         assert_eq!(client.default_max_tokens(), 4096); // Default max_tokens
@@ -432,7 +436,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_chat_request_structure() {
-        use crate::{Client, types::{ContentBlock, ChatRequest, MessageParam, Role}};
+        use crate::{
+            types::{ChatRequest, ContentBlock, MessageParam, Role},
+            Client,
+        };
 
         // Create a mock client that uses httpbin for testing request structure
         let client = Client::builder()
@@ -459,10 +466,10 @@ mod tests {
         // This will fail because httpbin doesn't implement the Anthropic API,
         // but we can test that the request is properly structured
         let result = client.execute_chat(request).await;
-        
+
         // We expect this to fail since httpbin doesn't return the expected format
         assert!(result.is_err());
-        
+
         // The error should be related to response parsing, not request building
         match result.unwrap_err() {
             Error::InvalidResponse(_) | Error::InvalidRequest(_) => {
@@ -480,7 +487,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_execute_chat_with_model_override() {
-        use crate::{Client, types::{ContentBlock, ChatRequest, MessageParam, Role}};
+        use crate::{
+            types::{ChatRequest, ContentBlock, MessageParam, Role},
+            Client,
+        };
 
         // Create a client with one model
         let client = Client::builder()
@@ -505,10 +515,12 @@ mod tests {
         };
 
         // Test with model override
-        let result = client.execute_chat_with_model(
-            Model::Claude35Sonnet20241022, // Different model
-            request
-        ).await;
+        let result = client
+            .execute_chat_with_model(
+                Model::Claude35Sonnet20241022, // Different model
+                request,
+            )
+            .await;
 
         // This will fail because httpbin doesn't implement the Anthropic API,
         // but we're testing that the method accepts the model parameter
@@ -517,7 +529,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_chat_builder_integration() {
-        use crate::{Client, types::ContentBlock};
+        use crate::{types::ContentBlock, Client};
 
         let client = Client::builder()
             .api_key("sk-ant-api03-test-key")
@@ -529,7 +541,8 @@ mod tests {
             .expect("Client should build successfully");
 
         // Test the fluent API
-        let request = client.chat_builder()
+        let request = client
+            .chat_builder()
             .user_message(ContentBlock::text("Hello!"))
             .assistant_message(ContentBlock::text("Hi there!"))
             .system("Be helpful and concise")
@@ -549,26 +562,29 @@ mod tests {
     #[test]
     fn test_client_send_sync_traits() {
         use crate::Client;
-        
+
         // Test that Client implements Send + Sync
         fn assert_send<T: Send>() {}
         fn assert_sync<T: Sync>() {}
-        
+
         assert_send::<Client>();
         assert_sync::<Client>();
-        
+
         // Test that we can clone the client (Arc<ClientInner> should be cloneable)
         let client = Client::builder()
             .api_key("sk-ant-api03-test-key")
             .build()
             .expect("Client should build");
-            
+
         let _cloned_client = client.clone();
     }
 
     #[tokio::test]
     async fn test_concurrent_requests() {
-        use crate::{Client, types::{ContentBlock, ChatRequest, MessageParam, Role}};
+        use crate::{
+            types::{ChatRequest, ContentBlock, MessageParam, Role},
+            Client,
+        };
         use tokio::task;
 
         let client = Client::builder()
@@ -596,21 +612,17 @@ mod tests {
         let request1 = request.clone();
         let request2 = request.clone();
 
-        let task1 = task::spawn(async move {
-            client1.execute_chat(request1).await
-        });
+        let task1 = task::spawn(async move { client1.execute_chat(request1).await });
 
-        let task2 = task::spawn(async move {
-            client2.execute_chat(request2).await
-        });
+        let task2 = task::spawn(async move { client2.execute_chat(request2).await });
 
         // Both should complete (though they'll error with httpbin)
         let (result1, result2) = tokio::join!(task1, task2);
-        
+
         // Both tasks should complete without panicking
         assert!(result1.is_ok()); // Task completed
         assert!(result2.is_ok()); // Task completed
-        
+
         // The actual API calls will fail with httpbin, but that's expected
         assert!(result1.unwrap().is_err());
         assert!(result2.unwrap().is_err());
@@ -618,7 +630,7 @@ mod tests {
 
     #[test]
     fn test_request_serialization() {
-        use crate::types::{ChatRequest, MessageParam, Role, ContentBlock, SystemMessage};
+        use crate::types::{ChatRequest, ContentBlock, MessageParam, Role, SystemMessage};
         use serde_json;
 
         let request = ChatRequest {
@@ -638,21 +650,21 @@ mod tests {
 
         // Test that the request can be serialized (this is what execute_chat does internally)
         let serialized = serde_json::to_value(&request).expect("Should serialize");
-        
+
         // Verify key fields are present
         assert!(serialized["messages"].is_array());
         assert!(serialized["system"].is_array());
         assert!((serialized["temperature"].as_f64().unwrap() - 0.7).abs() < 0.001);
         assert!((serialized["top_p"].as_f64().unwrap() - 0.9).abs() < 0.001);
         assert!(serialized["stop_sequences"].is_array());
-        
+
         // Verify that None fields are omitted
         assert!(serialized.get("tools").is_none());
     }
 
     #[test]
     fn test_model_and_max_tokens_injection() {
-        use crate::types::{ChatRequest, MessageParam, Role, ContentBlock, Model};
+        use crate::types::{ChatRequest, ContentBlock, MessageParam, Model, Role};
         use serde_json;
 
         let request = ChatRequest {
@@ -669,7 +681,8 @@ mod tests {
 
         // Simulate what execute_chat_with_model does
         let mut body = serde_json::to_value(&request).expect("Should serialize");
-        body["model"] = serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
+        body["model"] =
+            serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
         body["max_tokens"] = serde_json::to_value(1000u32).expect("Should serialize max_tokens");
 
         // Verify the fields were added
@@ -680,7 +693,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_count_tokens_request_structure() {
-        use crate::{Client, types::{ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage}};
+        use crate::{
+            types::{ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage},
+            Client,
+        };
 
         // Create a mock client that uses httpbin for testing request structure
         let client = Client::builder()
@@ -707,10 +723,10 @@ mod tests {
         // This will fail because httpbin doesn't implement the Anthropic API,
         // but we can test that the request is properly structured
         let result = client.count_tokens(request).await;
-        
+
         // We expect this to fail since httpbin doesn't return the expected format
         assert!(result.is_err());
-        
+
         // The error should be related to response parsing, not request building
         match result.unwrap_err() {
             Error::InvalidResponse(_) | Error::InvalidRequest(_) => {
@@ -728,7 +744,9 @@ mod tests {
 
     #[test]
     fn test_count_tokens_request_serialization() {
-        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, SystemMessage, Model};
+        use crate::types::{
+            ContentBlock, CountTokensRequest, MessageParam, Model, Role, SystemMessage,
+        };
         use serde_json;
 
         let request = CountTokensRequest {
@@ -751,19 +769,20 @@ mod tests {
 
         // Test that the request can be serialized
         let serialized = serde_json::to_value(&request).expect("Should serialize");
-        
+
         // Verify key fields are present
         assert!(serialized["messages"].is_array());
         assert_eq!(serialized["messages"].as_array().unwrap().len(), 2);
         assert!(serialized["system"].is_array());
         assert_eq!(serialized["system"][0]["text"], "Be helpful and concise.");
-        
+
         // Verify that None fields are omitted
         assert!(serialized.get("tools").is_none());
 
         // Simulate what count_tokens does - add model to the request
         let mut body = serialized;
-        body["model"] = serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
+        body["model"] =
+            serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
 
         // Verify the model field was added
         assert_eq!(body["model"], "claude-3-5-sonnet-20241022");
@@ -773,7 +792,7 @@ mod tests {
 
     #[test]
     fn test_count_tokens_request_minimal() {
-        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, Model};
+        use crate::types::{ContentBlock, CountTokensRequest, MessageParam, Model, Role};
         use serde_json;
 
         // Test with minimal request (no system, no tools)
@@ -787,25 +806,28 @@ mod tests {
         };
 
         let serialized = serde_json::to_value(&request).expect("Should serialize");
-        
+
         // Verify required fields are present
         assert!(serialized["messages"].is_array());
         assert_eq!(serialized["messages"].as_array().unwrap().len(), 1);
-        
+
         // Verify optional fields are omitted
         assert!(serialized.get("system").is_none());
         assert!(serialized.get("tools").is_none());
 
         // Add model as count_tokens would do
         let mut body = serialized;
-        body["model"] = serde_json::to_value(&Model::Claude3Haiku20240307).expect("Should serialize model");
+        body["model"] =
+            serde_json::to_value(&Model::Claude3Haiku20240307).expect("Should serialize model");
 
         assert_eq!(body["model"], "claude-3-haiku-20240307");
     }
 
     #[test]
     fn test_count_tokens_request_with_multimodal_content() {
-        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, ImageMediaType, Model};
+        use crate::types::{
+            ContentBlock, CountTokensRequest, ImageMediaType, MessageParam, Model, Role,
+        };
         use serde_json;
 
         let request = CountTokensRequest {
@@ -821,17 +843,20 @@ mod tests {
         };
 
         let serialized = serde_json::to_value(&request).expect("Should serialize");
-        
+
         // Verify multimodal content is properly serialized
         assert!(serialized["messages"].is_array());
         let message = &serialized["messages"][0];
         assert!(message["content"].is_array());
         assert_eq!(message["content"].as_array().unwrap().len(), 2);
-        
+
         // Check text content
         assert_eq!(message["content"][0]["type"], "text");
-        assert_eq!(message["content"][0]["text"], "What do you see in this image?");
-        
+        assert_eq!(
+            message["content"][0]["text"],
+            "What do you see in this image?"
+        );
+
         // Check image content
         assert_eq!(message["content"][1]["type"], "image");
         assert_eq!(message["content"][1]["source"]["type"], "base64");
@@ -840,14 +865,15 @@ mod tests {
 
         // Add model
         let mut body = serialized;
-        body["model"] = serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
+        body["model"] =
+            serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
         assert_eq!(body["model"], "claude-3-5-sonnet-20241022");
     }
 
     #[test]
     fn test_count_tokens_request_with_tools() {
-        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, Model};
         use crate::tools::Tool;
+        use crate::types::{ContentBlock, CountTokensRequest, MessageParam, Model, Role};
         use serde_json;
 
         // Create a simple tool for testing
@@ -874,12 +900,12 @@ mod tests {
         };
 
         let serialized = serde_json::to_value(&request).expect("Should serialize");
-        
+
         // Verify tools are properly serialized
         assert!(serialized["messages"].is_array());
         assert!(serialized["tools"].is_array());
         assert_eq!(serialized["tools"].as_array().unwrap().len(), 1);
-        
+
         let tool_json = &serialized["tools"][0];
         assert_eq!(tool_json["name"], "calculator");
         assert_eq!(tool_json["description"], "A simple calculator");
@@ -887,13 +913,17 @@ mod tests {
 
         // Add model
         let mut body = serialized;
-        body["model"] = serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
+        body["model"] =
+            serde_json::to_value(&Model::Claude35Sonnet20241022).expect("Should serialize model");
         assert_eq!(body["model"], "claude-3-5-sonnet-20241022");
     }
 
     #[tokio::test]
     async fn test_count_tokens_with_different_models() {
-        use crate::{Client, types::{ContentBlock, CountTokensRequest, MessageParam, Role}};
+        use crate::{
+            types::{ContentBlock, CountTokensRequest, MessageParam, Role},
+            Client,
+        };
 
         let client = Client::builder()
             .api_key("sk-ant-api03-test-key")
@@ -914,10 +944,10 @@ mod tests {
 
         // Test that count_tokens uses the client's configured model
         let result = client.count_tokens(request).await;
-        
+
         // This will fail with httpbin, but we're testing that the method works
         assert!(result.is_err());
-        
+
         // The error should indicate that the request was attempted
         match result.unwrap_err() {
             Error::InvalidResponse(_) | Error::InvalidRequest(_) | Error::Api { .. } => {
@@ -973,7 +1003,7 @@ mod tests {
 
     #[test]
     fn test_count_tokens_request_builder_pattern() {
-        use crate::types::{CountTokensRequest, MessageParam, Role, ContentBlock, SystemMessage};
+        use crate::types::{ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage};
 
         // Test building a CountTokensRequest manually (no builder pattern exists yet)
         let mut messages = Vec::new();
@@ -1006,7 +1036,9 @@ mod tests {
 
     #[test]
     fn test_count_tokens_request_from_chat_request() {
-        use crate::types::{ChatRequest, CountTokensRequest, MessageParam, Role, ContentBlock, SystemMessage};
+        use crate::types::{
+            ChatRequest, ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage,
+        };
 
         // Test converting a ChatRequest to CountTokensRequest using From trait
         let chat_request = ChatRequest {
@@ -1036,8 +1068,8 @@ mod tests {
 
     #[test]
     fn test_count_tokens_request_from_chat_request_with_tools() {
-        use crate::types::{ChatRequest, CountTokensRequest, MessageParam, Role, ContentBlock};
         use crate::tools::Tool;
+        use crate::types::{ChatRequest, ContentBlock, CountTokensRequest, MessageParam, Role};
 
         let tool = Tool::new("test_tool")
             .description("A test tool")

@@ -28,7 +28,7 @@ pub enum Error {
         Some(duration) => format!(", retry after {:?}", duration),
         None => String::new(),
     })]
-    RateLimit { 
+    RateLimit {
         retry_after: Option<Duration>,
         request_id: Option<String>,
     },
@@ -55,7 +55,7 @@ pub enum Error {
 
     /// Request timeout error
     #[error("Request timeout after {timeout:?}")]
-    Timeout { 
+    Timeout {
         timeout: Duration,
         request_id: Option<String>,
     },
@@ -138,40 +138,38 @@ impl Error {
     pub fn is_retryable(&self) -> bool {
         match self {
             // Network errors are generally retryable
-            Error::Http(e) => {
-                e.is_timeout() || e.is_connect() || e.is_request()
-            }
+            Error::Http(e) => e.is_timeout() || e.is_connect() || e.is_request(),
             Error::Network(_) => true,
             Error::Timeout { .. } => true,
-            
+
             // API errors - retry on server errors and rate limits
             Error::Api { status, .. } => {
                 status.is_server_error() || *status == reqwest::StatusCode::TOO_MANY_REQUESTS
             }
             Error::RateLimit { .. } => true,
-            
+
             // Stream errors might be retryable depending on context
             Error::Stream(_) => false, // Conservative approach
-            
+
             // Client errors are generally not retryable
-            Error::Authentication(_) |
-            Error::Config(_) |
-            Error::InvalidRequest(_) |
-            Error::Serialization(_) |
-            Error::Url(_) |
-            Error::InvalidResponse(_) |
-            Error::Model(_) |
-            Error::Tool(_) |
-            Error::Content(_) => false,
+            Error::Authentication(_)
+            | Error::Config(_)
+            | Error::InvalidRequest(_)
+            | Error::Serialization(_)
+            | Error::Url(_)
+            | Error::InvalidResponse(_)
+            | Error::Model(_)
+            | Error::Tool(_)
+            | Error::Content(_) => false,
         }
     }
 
     /// Get the request ID if available
     pub fn request_id(&self) -> Option<&str> {
         match self {
-            Error::Api { request_id, .. } |
-            Error::RateLimit { request_id, .. } |
-            Error::Timeout { request_id, .. } => request_id.as_deref(),
+            Error::Api { request_id, .. }
+            | Error::RateLimit { request_id, .. }
+            | Error::Timeout { request_id, .. } => request_id.as_deref(),
             _ => None,
         }
     }
@@ -186,8 +184,9 @@ impl Error {
             Error::InvalidRequest(_) | Error::Url(_) => ErrorCategory::Request,
             Error::Api { status, .. } => {
                 if status.is_client_error() {
-                    if *status == reqwest::StatusCode::UNAUTHORIZED || 
-                       *status == reqwest::StatusCode::FORBIDDEN {
+                    if *status == reqwest::StatusCode::UNAUTHORIZED
+                        || *status == reqwest::StatusCode::FORBIDDEN
+                    {
                         ErrorCategory::Auth
                     } else if *status == reqwest::StatusCode::TOO_MANY_REQUESTS {
                         ErrorCategory::RateLimit
@@ -198,8 +197,11 @@ impl Error {
                     ErrorCategory::Server
                 }
             }
-            Error::Serialization(_) | Error::InvalidResponse(_) | 
-            Error::Model(_) | Error::Tool(_) | Error::Content(_) => ErrorCategory::Processing,
+            Error::Serialization(_)
+            | Error::InvalidResponse(_)
+            | Error::Model(_)
+            | Error::Tool(_)
+            | Error::Content(_) => ErrorCategory::Processing,
             Error::Stream(_) => ErrorCategory::Stream,
         }
     }
@@ -208,10 +210,10 @@ impl Error {
     pub fn is_client_error(&self) -> bool {
         match self {
             Error::Api { status, .. } => status.is_client_error(),
-            Error::Authentication(_) |
-            Error::Config(_) |
-            Error::InvalidRequest(_) |
-            Error::Url(_) => true,
+            Error::Authentication(_)
+            | Error::Config(_)
+            | Error::InvalidRequest(_)
+            | Error::Url(_) => true,
             _ => false,
         }
     }
@@ -272,7 +274,12 @@ mod tests {
         );
 
         match error {
-            Error::Api { status, message, error_type, request_id } => {
+            Error::Api {
+                status,
+                message,
+                error_type,
+                request_id,
+            } => {
                 assert_eq!(status, StatusCode::BAD_REQUEST);
                 assert_eq!(message, "Invalid request");
                 assert_eq!(error_type, Some("invalid_request_error".to_string()));
@@ -288,7 +295,10 @@ mod tests {
         let error = Error::rate_limit(Some(retry_after), Some("req_456".to_string()));
 
         match error {
-            Error::RateLimit { retry_after: Some(duration), request_id } => {
+            Error::RateLimit {
+                retry_after: Some(duration),
+                request_id,
+            } => {
                 assert_eq!(duration, Duration::from_secs(60));
                 assert_eq!(request_id, Some("req_456".to_string()));
             }
@@ -302,7 +312,10 @@ mod tests {
         let error = Error::timeout(timeout, Some("req_789".to_string()));
 
         match error {
-            Error::Timeout { timeout: t, request_id } => {
+            Error::Timeout {
+                timeout: t,
+                request_id,
+            } => {
                 assert_eq!(t, Duration::from_secs(30));
                 assert_eq!(request_id, Some("req_789".to_string()));
             }
@@ -314,22 +327,21 @@ mod tests {
     fn test_is_retryable() {
         // Retryable errors
         assert!(Error::Network("Connection failed".to_string()).is_retryable());
-        assert!(Error::Timeout { 
-            timeout: Duration::from_secs(30), 
-            request_id: None 
-        }.is_retryable());
+        assert!(Error::Timeout {
+            timeout: Duration::from_secs(30),
+            request_id: None
+        }
+        .is_retryable());
         assert!(Error::api(
             StatusCode::INTERNAL_SERVER_ERROR,
             "Server error",
             None,
             None
-        ).is_retryable());
-        assert!(Error::api(
-            StatusCode::TOO_MANY_REQUESTS,
-            "Rate limited",
-            None,
-            None
-        ).is_retryable());
+        )
+        .is_retryable());
+        assert!(
+            Error::api(StatusCode::TOO_MANY_REQUESTS, "Rate limited", None, None).is_retryable()
+        );
         assert!(Error::rate_limit(None, None).is_retryable());
 
         // Non-retryable errors
@@ -337,12 +349,7 @@ mod tests {
         assert!(!Error::Config("Invalid config".to_string()).is_retryable());
         assert!(!Error::InvalidRequest("Bad request".to_string()).is_retryable());
         assert!(!Error::Stream("Stream error".to_string()).is_retryable());
-        assert!(!Error::api(
-            StatusCode::BAD_REQUEST,
-            "Bad request",
-            None,
-            None
-        ).is_retryable());
+        assert!(!Error::api(StatusCode::BAD_REQUEST, "Bad request", None, None).is_retryable());
     }
 
     #[test]
@@ -351,7 +358,7 @@ mod tests {
             StatusCode::BAD_REQUEST,
             "Error",
             None,
-            Some("req_123".to_string())
+            Some("req_123".to_string()),
         );
         assert_eq!(error_with_id.request_id(), Some("req_123"));
 
@@ -367,22 +374,60 @@ mod tests {
 
     #[test]
     fn test_error_categories() {
-        assert_eq!(Error::Network("test".to_string()).category(), ErrorCategory::Network);
-        assert_eq!(Error::Authentication("test".to_string()).category(), ErrorCategory::Auth);
-        assert_eq!(Error::rate_limit(None, None).category(), ErrorCategory::RateLimit);
-        assert_eq!(Error::Config("test".to_string()).category(), ErrorCategory::Config);
-        assert_eq!(Error::InvalidRequest("test".to_string()).category(), ErrorCategory::Request);
-        assert_eq!(Error::Serialization(serde_json::Error::io(std::io::Error::new(
-            std::io::ErrorKind::Other, "test"
-        ))).category(), ErrorCategory::Processing);
-        assert_eq!(Error::Stream("test".to_string()).category(), ErrorCategory::Stream);
+        assert_eq!(
+            Error::Network("test".to_string()).category(),
+            ErrorCategory::Network
+        );
+        assert_eq!(
+            Error::Authentication("test".to_string()).category(),
+            ErrorCategory::Auth
+        );
+        assert_eq!(
+            Error::rate_limit(None, None).category(),
+            ErrorCategory::RateLimit
+        );
+        assert_eq!(
+            Error::Config("test".to_string()).category(),
+            ErrorCategory::Config
+        );
+        assert_eq!(
+            Error::InvalidRequest("test".to_string()).category(),
+            ErrorCategory::Request
+        );
+        assert_eq!(
+            Error::Serialization(serde_json::Error::io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "test"
+            )))
+            .category(),
+            ErrorCategory::Processing
+        );
+        assert_eq!(
+            Error::Stream("test".to_string()).category(),
+            ErrorCategory::Stream
+        );
 
         // API error categories
-        assert_eq!(Error::api(StatusCode::UNAUTHORIZED, "test", None, None).category(), ErrorCategory::Auth);
-        assert_eq!(Error::api(StatusCode::FORBIDDEN, "test", None, None).category(), ErrorCategory::Auth);
-        assert_eq!(Error::api(StatusCode::TOO_MANY_REQUESTS, "test", None, None).category(), ErrorCategory::RateLimit);
-        assert_eq!(Error::api(StatusCode::BAD_REQUEST, "test", None, None).category(), ErrorCategory::Request);
-        assert_eq!(Error::api(StatusCode::INTERNAL_SERVER_ERROR, "test", None, None).category(), ErrorCategory::Server);
+        assert_eq!(
+            Error::api(StatusCode::UNAUTHORIZED, "test", None, None).category(),
+            ErrorCategory::Auth
+        );
+        assert_eq!(
+            Error::api(StatusCode::FORBIDDEN, "test", None, None).category(),
+            ErrorCategory::Auth
+        );
+        assert_eq!(
+            Error::api(StatusCode::TOO_MANY_REQUESTS, "test", None, None).category(),
+            ErrorCategory::RateLimit
+        );
+        assert_eq!(
+            Error::api(StatusCode::BAD_REQUEST, "test", None, None).category(),
+            ErrorCategory::Request
+        );
+        assert_eq!(
+            Error::api(StatusCode::INTERNAL_SERVER_ERROR, "test", None, None).category(),
+            ErrorCategory::Server
+        );
     }
 
     #[test]
@@ -391,7 +436,12 @@ mod tests {
         assert!(client_error.is_client_error());
         assert!(!client_error.is_server_error());
 
-        let server_error = Error::api(StatusCode::INTERNAL_SERVER_ERROR, "Server error", None, None);
+        let server_error = Error::api(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Server error",
+            None,
+            None,
+        );
         assert!(!server_error.is_client_error());
         assert!(server_error.is_server_error());
 
@@ -425,10 +475,16 @@ mod tests {
         assert_eq!(server_error.retry_delay(), Some(Duration::from_secs(1)));
 
         let network_error = Error::Network("Connection failed".to_string());
-        assert_eq!(network_error.retry_delay(), Some(Duration::from_millis(500)));
+        assert_eq!(
+            network_error.retry_delay(),
+            Some(Duration::from_millis(500))
+        );
 
         let timeout_error = Error::timeout(Duration::from_secs(30), None);
-        assert_eq!(timeout_error.retry_delay(), Some(Duration::from_millis(500)));
+        assert_eq!(
+            timeout_error.retry_delay(),
+            Some(Duration::from_millis(500))
+        );
 
         let auth_error = Error::Authentication("Invalid key".to_string());
         assert_eq!(auth_error.retry_delay(), None);
@@ -440,7 +496,7 @@ mod tests {
             StatusCode::BAD_REQUEST,
             "Invalid request",
             Some("invalid_request_error".to_string()),
-            Some("req_123".to_string())
+            Some("req_123".to_string()),
         );
         let display = format!("{}", api_error);
         assert!(display.contains("API error: 400 Bad Request - Invalid request"));

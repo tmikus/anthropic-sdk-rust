@@ -301,14 +301,14 @@ mod tests {
             };
 
             let json = serde_json::to_value(&request).unwrap();
-            
+
             // None fields should be omitted from JSON
             prop_assert!(json.get("system").is_none());
             prop_assert!(json.get("tools").is_none());
             prop_assert!(json.get("temperature").is_none());
             prop_assert!(json.get("top_p").is_none());
             prop_assert!(json.get("stop_sequences").is_none());
-            
+
             // Required fields should be present
             prop_assert!(json.get("messages").is_some());
         }
@@ -317,7 +317,7 @@ mod tests {
         fn test_content_block_type_field(block in arb_content_block()) {
             let json = serde_json::to_value(&block).unwrap();
             let type_field = json.get("type").unwrap().as_str().unwrap();
-            
+
             match block {
                 ContentBlock::Text { .. } => prop_assert_eq!(type_field, "text"),
                 ContentBlock::Image { .. } => prop_assert_eq!(type_field, "image"),
@@ -331,7 +331,7 @@ mod tests {
         fn test_image_source_type_field(source in arb_image_source()) {
             let json = serde_json::to_value(&source).unwrap();
             let type_field = json.get("type").unwrap().as_str().unwrap();
-            
+
             match source {
                 ImageSource::Base64 { .. } => prop_assert_eq!(type_field, "base64"),
                 ImageSource::Url { .. } => prop_assert_eq!(type_field, "url"),
@@ -352,7 +352,7 @@ mod tests {
 
             let json = serde_json::to_value(&usage).unwrap();
             let deserialized: Usage = serde_json::from_value(json).unwrap();
-            
+
             prop_assert_eq!(usage.input_tokens, deserialized.input_tokens);
             prop_assert_eq!(usage.output_tokens, deserialized.output_tokens);
         }
@@ -371,7 +371,7 @@ mod tests {
             };
 
             let json = serde_json::to_value(&request).unwrap();
-            
+
             // Test that empty collections are serialized
             prop_assert!(json.get("system").is_some());
             prop_assert!(json.get("tools").is_some());
@@ -386,10 +386,10 @@ mod tests {
         ) {
             let text = format!("{} {} {}", base_text, emoji, unicode_text);
             let content_block = ContentBlock::text(text.clone());
-            
+
             let json = serde_json::to_value(&content_block).unwrap();
             let deserialized: ContentBlock = serde_json::from_value(json).unwrap();
-            
+
             match deserialized {
                 ContentBlock::Text { text: deserialized_text, .. } => {
                     prop_assert_eq!(text, deserialized_text);
@@ -422,7 +422,7 @@ mod tests {
 
             // Should be able to serialize any float values
             let json = serde_json::to_value(&request).unwrap();
-            
+
             // Test that the JSON contains the expected fields
             prop_assert!(json.get("messages").is_some());
             if request.temperature.is_some() {
@@ -439,10 +439,10 @@ mod tests {
         ) {
             let long_text = "a".repeat(text_len);
             let content_block = ContentBlock::text(long_text.clone());
-            
+
             let json = serde_json::to_value(&content_block).unwrap();
             let deserialized: ContentBlock = serde_json::from_value(json).unwrap();
-            
+
             match deserialized {
                 ContentBlock::Text { text: deserialized_text, .. } => {
                     prop_assert_eq!(long_text.len(), deserialized_text.len());

@@ -79,9 +79,11 @@ impl ToolBuilder {
     ) -> Self {
         let name = name.into();
         let property_type = property_type.into();
-        
+
         // Ensure we have a proper object schema
-        if !self.schema.is_object() || self.schema.get("type") != Some(&serde_json::Value::String("object".to_string())) {
+        if !self.schema.is_object()
+            || self.schema.get("type") != Some(&serde_json::Value::String("object".to_string()))
+        {
             self.schema = serde_json::json!({
                 "type": "object",
                 "properties": {},
@@ -93,7 +95,7 @@ impl ToolBuilder {
         let mut property_def = serde_json::json!({
             "type": property_type
         });
-        
+
         if let Some(desc) = description {
             property_def["description"] = serde_json::Value::String(desc.into());
         }
@@ -123,18 +125,18 @@ impl ToolBuilder {
 }
 
 /// Convenience macro for tool definition
-/// 
+///
 /// # Examples
-/// 
+///
 /// ```rust
 /// use anthropic_rust::tool;
-/// 
+///
 /// // Simple tool with just a name
 /// let tool1 = tool!("calculator");
-/// 
+///
 /// // Tool with name and description
 /// let tool2 = tool!("calculator", "A simple calculator tool");
-/// 
+///
 /// // Tool with schema using schemars (requires schemars feature)
 /// #[cfg(feature = "schemars")]
 /// {
@@ -163,13 +165,16 @@ macro_rules! tool {
 }
 
 /// Convenience macro for tool definition with schemars support
-/// 
+///
 /// This macro is only available when the `schemars` feature is enabled.
 #[cfg(feature = "schemars")]
 #[macro_export]
 macro_rules! tool_with_schema {
     ($name:expr, $desc:expr, $schema_type:ty) => {
-        $crate::tools::Tool::new($name).description($desc).schema::<$schema_type>().build()
+        $crate::tools::Tool::new($name)
+            .description($desc)
+            .schema::<$schema_type>()
+            .build()
     };
 }
 
@@ -181,7 +186,7 @@ mod tests {
     #[test]
     fn test_tool_creation_basic() {
         let tool = Tool::new("calculator").build();
-        
+
         assert_eq!(tool.name, "calculator");
         assert_eq!(tool.description, None);
         assert_eq!(tool.input_schema["type"], "object");
@@ -194,9 +199,12 @@ mod tests {
         let tool = Tool::new("calculator")
             .description("A simple calculator tool")
             .build();
-        
+
         assert_eq!(tool.name, "calculator");
-        assert_eq!(tool.description, Some("A simple calculator tool".to_string()));
+        assert_eq!(
+            tool.description,
+            Some("A simple calculator tool".to_string())
+        );
     }
 
     #[test]
@@ -234,7 +242,12 @@ mod tests {
     fn test_tool_builder_with_properties() {
         let tool = Tool::new("calculator")
             .description("A calculator tool")
-            .property("operation", "string", Some("The operation to perform"), true)
+            .property(
+                "operation",
+                "string",
+                Some("The operation to perform"),
+                true,
+            )
             .property("a", "number", Some("First operand"), true)
             .property("b", "number", Some("Second operand"), true)
             .property("precision", "integer", Some("Decimal precision"), false)
@@ -242,21 +255,24 @@ mod tests {
 
         assert_eq!(tool.name, "calculator");
         assert_eq!(tool.description, Some("A calculator tool".to_string()));
-        
+
         let schema = &tool.input_schema;
         assert_eq!(schema["type"], "object");
-        
+
         // Check properties
         let properties = &schema["properties"];
         assert_eq!(properties["operation"]["type"], "string");
-        assert_eq!(properties["operation"]["description"], "The operation to perform");
+        assert_eq!(
+            properties["operation"]["description"],
+            "The operation to perform"
+        );
         assert_eq!(properties["a"]["type"], "number");
         assert_eq!(properties["a"]["description"], "First operand");
         assert_eq!(properties["b"]["type"], "number");
         assert_eq!(properties["b"]["description"], "Second operand");
         assert_eq!(properties["precision"]["type"], "integer");
         assert_eq!(properties["precision"]["description"], "Decimal precision");
-        
+
         // Check required fields
         let required = schema["required"].as_array().unwrap();
         assert!(required.contains(&json!("operation")));
@@ -269,17 +285,25 @@ mod tests {
     fn test_tool_serialization() {
         let tool = Tool::new("calculator")
             .description("A calculator tool")
-            .property("operation", "string", Some("The operation to perform"), true)
+            .property(
+                "operation",
+                "string",
+                Some("The operation to perform"),
+                true,
+            )
             .property("a", "number", None::<String>, true)
             .build();
 
         let json = serde_json::to_string(&tool).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        
+
         assert_eq!(parsed["name"], "calculator");
         assert_eq!(parsed["description"], "A calculator tool");
         assert_eq!(parsed["input_schema"]["type"], "object");
-        assert_eq!(parsed["input_schema"]["properties"]["operation"]["type"], "string");
+        assert_eq!(
+            parsed["input_schema"]["properties"]["operation"]["type"],
+            "string"
+        );
         assert_eq!(parsed["input_schema"]["properties"]["a"]["type"], "number");
     }
 
@@ -301,10 +325,16 @@ mod tests {
         });
 
         let tool: Tool = serde_json::from_value(json).unwrap();
-        
+
         assert_eq!(tool.name, "weather");
-        assert_eq!(tool.description, Some("Get weather information".to_string()));
-        assert_eq!(tool.input_schema["properties"]["location"]["type"], "string");
+        assert_eq!(
+            tool.description,
+            Some("Get weather information".to_string())
+        );
+        assert_eq!(
+            tool.input_schema["properties"]["location"]["type"],
+            "string"
+        );
     }
 
     #[test]
@@ -324,8 +354,8 @@ mod tests {
     #[cfg(feature = "schemars")]
     #[test]
     fn test_tool_with_schemars() {
-        use serde::{Deserialize, Serialize};
         use schemars::JsonSchema;
+        use serde::{Deserialize, Serialize};
 
         #[derive(Serialize, Deserialize, JsonSchema)]
         struct CalculatorInput {
@@ -347,10 +377,10 @@ mod tests {
 
         assert_eq!(tool.name, "calculator");
         assert_eq!(tool.description, Some("A calculator tool".to_string()));
-        
+
         let schema = &tool.input_schema;
         assert_eq!(schema["type"], "object");
-        
+
         // The exact structure depends on schemars version, but we can check basic properties
         let properties = &schema["properties"];
         assert!(properties.get("operation").is_some());
@@ -362,8 +392,8 @@ mod tests {
     #[cfg(feature = "schemars")]
     #[test]
     fn test_tool_macro_with_schemars() {
-        use serde::{Deserialize, Serialize};
         use schemars::JsonSchema;
+        use serde::{Deserialize, Serialize};
 
         #[derive(Serialize, Deserialize, JsonSchema)]
         struct WeatherInput {
@@ -372,13 +402,16 @@ mod tests {
         }
 
         let tool = tool_with_schema!("weather", "Get weather information", WeatherInput);
-        
+
         assert_eq!(tool.name, "weather");
-        assert_eq!(tool.description, Some("Get weather information".to_string()));
-        
+        assert_eq!(
+            tool.description,
+            Some("Get weather information".to_string())
+        );
+
         let schema = &tool.input_schema;
         assert_eq!(schema["type"], "object");
-        
+
         let properties = &schema["properties"];
         assert!(properties.get("location").is_some());
         assert!(properties.get("units").is_some());
@@ -393,13 +426,13 @@ mod tests {
 
         let schema = &tool.input_schema;
         let properties = &schema["properties"];
-        
+
         // Properties should exist but without description
         assert_eq!(properties["param1"]["type"], "string");
         assert!(properties["param1"].get("description").is_none());
         assert_eq!(properties["param2"]["type"], "number");
         assert!(properties["param2"].get("description").is_none());
-        
+
         // Check required array
         let required = schema["required"].as_array().unwrap();
         assert!(required.contains(&json!("param1")));
@@ -423,11 +456,11 @@ mod tests {
 
         let schema = &tool.input_schema;
         let properties = &schema["properties"];
-        
+
         // Should have the new schema, not the initial property
         assert!(properties.get("initial").is_none());
         assert_eq!(properties["new_prop"]["type"], "boolean");
-        
+
         let required = schema["required"].as_array().unwrap();
         assert!(required.contains(&json!("new_prop")));
         assert!(!required.contains(&json!("initial")));
@@ -450,12 +483,12 @@ mod tests {
 
         let schema = &tool.input_schema;
         let properties = &schema["properties"];
-        
+
         // Should have both properties
         assert_eq!(properties["existing"]["type"], "string");
         assert_eq!(properties["new_prop"]["type"], "number");
         assert_eq!(properties["new_prop"]["description"], "A new property");
-        
+
         let required = schema["required"].as_array().unwrap();
         assert!(required.contains(&json!("existing")));
         assert!(required.contains(&json!("new_prop")));
@@ -470,14 +503,17 @@ mod tests {
 
         let schema = &tool.input_schema;
         let properties = &schema["properties"];
-        
+
         // Should have updated property
         assert_eq!(properties["param"]["type"], "number");
         assert_eq!(properties["param"]["description"], "Updated param");
-        
+
         // Should only appear once in required array
         let required = schema["required"].as_array().unwrap();
-        let param_count = required.iter().filter(|v| v.as_str() == Some("param")).count();
+        let param_count = required
+            .iter()
+            .filter(|v| v.as_str() == Some("param"))
+            .count();
         assert_eq!(param_count, 1);
     }
 }

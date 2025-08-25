@@ -2,14 +2,14 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::{Client, config::*, types::Model, Error};
-    use std::time::Duration;
+    use crate::{config::*, types::Model, Client, Error};
     use pretty_assertions::assert_eq;
+    use std::time::Duration;
 
     #[test]
     fn test_config_default_values() {
         let config = Config::default();
-        
+
         assert_eq!(config.api_key, "");
         assert_eq!(config.base_url.as_str(), "https://api.anthropic.com/");
         assert_eq!(config.timeout, Duration::from_secs(60));
@@ -26,7 +26,7 @@ mod tests {
 
         assert!(client.is_ok());
         let client = client.unwrap();
-        
+
         assert_eq!(client.inner.config.api_key, "sk-ant-api03-test-key");
         assert_eq!(client.inner.config.model, Model::Claude35Sonnet20241022);
         assert_eq!(client.inner.config.max_tokens, 4096);
@@ -44,7 +44,7 @@ mod tests {
 
         assert!(client.is_ok());
         let client = client.unwrap();
-        
+
         assert_eq!(client.inner.config.api_key, "sk-ant-api03-custom-key");
         assert_eq!(client.inner.config.model, Model::Claude3Haiku20240307);
         assert_eq!(client.inner.config.max_tokens, 2000);
@@ -62,8 +62,11 @@ mod tests {
 
         assert!(client.is_ok());
         let client = client.unwrap();
-        
-        assert_eq!(client.inner.config.base_url.as_str(), "https://custom.api.com/");
+
+        assert_eq!(
+            client.inner.config.base_url.as_str(),
+            "https://custom.api.com/"
+        );
     }
 
     #[test]
@@ -81,9 +84,7 @@ mod tests {
 
     #[test]
     fn test_client_builder_empty_api_key() {
-        let result = ClientBuilder::new()
-            .api_key("")
-            .build();
+        let result = ClientBuilder::new().api_key("").build();
 
         assert!(result.is_err());
         match result.unwrap_err() {
@@ -163,7 +164,7 @@ mod tests {
 
         let client = crate::Client::new(Model::Claude3Haiku20240307);
         assert!(client.is_ok());
-        
+
         let client = client.unwrap();
         assert_eq!(client.default_model(), Model::Claude3Haiku20240307);
         assert_eq!(client.default_max_tokens(), 4096); // Default value
@@ -179,7 +180,7 @@ mod tests {
 
         let result = crate::Client::new(Model::Claude35Sonnet20241022);
         assert!(result.is_err());
-        
+
         match result.unwrap_err() {
             Error::Config(msg) => assert!(msg.contains("API key")),
             _ => panic!("Expected Config error for missing API key"),
@@ -200,7 +201,7 @@ mod tests {
 
         assert!(client.is_ok());
         let client = client.unwrap();
-        
+
         let config = &client.inner.config;
         assert_eq!(config.api_key, "sk-ant-api03-test-key");
         assert_eq!(config.model, Model::Claude3Opus20240229);
@@ -307,7 +308,7 @@ mod tests {
         };
 
         let debug_str = format!("{:?}", config);
-        
+
         // Check that debug output contains the expected fields
         // The exact format may vary, so we check for key components
         assert!(debug_str.contains("api_key"));
@@ -321,7 +322,7 @@ mod tests {
     #[test]
     fn test_client_builder_default() {
         let builder = Client::builder();
-        
+
         // Should be equivalent to Client::builder()
         let result = builder.api_key("sk-ant-api03-test-key").build();
         assert!(result.is_ok());
@@ -341,7 +342,7 @@ mod tests {
 
         assert!(client.is_ok());
         let client = client.unwrap();
-        
+
         assert_eq!(client.inner.config.api_key, "sk-ant-api03-second-key");
         assert_eq!(client.inner.config.model, Model::Claude35Sonnet20241022);
         assert_eq!(client.inner.config.max_tokens, 2000);
@@ -390,11 +391,11 @@ mod tests {
             .unwrap();
 
         let cloned = client.clone();
-        
+
         // Both should have the same configuration
         assert_eq!(client.default_model(), cloned.default_model());
         assert_eq!(client.default_max_tokens(), cloned.default_max_tokens());
-        
+
         // They should be independent instances (Arc makes this efficient)
         assert_eq!(
             std::ptr::eq(&*client.inner, &*cloned.inner),
@@ -407,7 +408,7 @@ mod tests {
         // Verify that Client implements Send + Sync
         fn assert_send<T: Send>() {}
         fn assert_sync<T: Sync>() {}
-        
+
         assert_send::<crate::Client>();
         assert_sync::<crate::Client>();
     }
@@ -422,14 +423,17 @@ mod tests {
 
         for env_var in env_vars {
             std::env::set_var(env_var, "sk-ant-api03-test-key-from-env");
-            
+
             let client = Client::builder().build();
-            
+
             if env_var == "ANTHROPIC_API_KEY" {
                 assert!(client.is_ok());
-                assert_eq!(client.unwrap().inner.config.api_key, "sk-ant-api03-test-key-from-env");
+                assert_eq!(
+                    client.unwrap().inner.config.api_key,
+                    "sk-ant-api03-test-key-from-env"
+                );
             }
-            
+
             std::env::remove_var(env_var);
         }
     }
@@ -437,12 +441,12 @@ mod tests {
     #[test]
     fn test_client_builder_validation_order() {
         // Test that validation happens in the right order
-        
+
         // Missing API key should be caught first
         let result = ClientBuilder::new()
             .max_tokens(0) // This is also invalid
             .build();
-        
+
         assert!(result.is_err());
         match result.unwrap_err() {
             Error::Config(msg) => {

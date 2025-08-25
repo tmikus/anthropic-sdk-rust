@@ -144,8 +144,7 @@ mod tests {
     #[test]
     fn test_request_middleware_with_interceptor() {
         let mock_interceptor = Arc::new(MockInterceptor::new());
-        let middleware = RequestMiddleware::new()
-            .with_interceptor(mock_interceptor.clone());
+        let middleware = RequestMiddleware::new().with_interceptor(mock_interceptor.clone());
 
         assert_eq!(middleware.interceptors.len(), 1);
         assert!(!middleware.log_requests);
@@ -155,8 +154,7 @@ mod tests {
     #[test]
     fn test_request_middleware_with_logging_interceptor() {
         let logging_interceptor = LoggingInterceptor::new().with_full_logging();
-        let middleware = RequestMiddleware::new()
-            .with_logging_interceptor(logging_interceptor);
+        let middleware = RequestMiddleware::new().with_logging_interceptor(logging_interceptor);
 
         assert_eq!(middleware.interceptors.len(), 1);
     }
@@ -249,7 +247,10 @@ mod tests {
 
         let client_retry_config = &client.inner.retry_config;
         assert_eq!(client_retry_config.max_retries, 5);
-        assert_eq!(client_retry_config.initial_delay, Duration::from_millis(100));
+        assert_eq!(
+            client_retry_config.initial_delay,
+            Duration::from_millis(100)
+        );
         assert_eq!(client_retry_config.max_delay, Duration::from_secs(10));
         assert_eq!(client_retry_config.backoff_multiplier, 1.5);
     }
@@ -297,7 +298,10 @@ mod tests {
         assert_eq!(cloned_middleware.log_responses, middleware.log_responses);
         assert_eq!(cloned_middleware.log_headers, middleware.log_headers);
         assert_eq!(cloned_middleware.log_body, middleware.log_body);
-        assert_eq!(cloned_middleware.interceptors.len(), middleware.interceptors.len());
+        assert_eq!(
+            cloned_middleware.interceptors.len(),
+            middleware.interceptors.len()
+        );
     }
 
     #[test]
@@ -358,7 +362,7 @@ mod tests {
         assert!(middleware.log_responses);
         assert!(middleware.log_headers);
         assert!(middleware.log_body);
-        
+
         // Should have 2 interceptors: logging + mock
         assert_eq!(middleware.interceptors.len(), 2);
     }
@@ -402,7 +406,7 @@ mod tests {
 
         let result = failing_interceptor.before_request(&request);
         assert!(result.is_err());
-        
+
         if let Err(Error::Config(msg)) = result {
             assert_eq!(msg, "Interceptor failure");
         } else {

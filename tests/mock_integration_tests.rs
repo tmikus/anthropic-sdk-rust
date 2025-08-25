@@ -1,14 +1,13 @@
 //! Integration tests with mock HTTP responses using wiremock
 
 use anthropic_rust::{
-    Client, Model, ContentBlock, Role, MessageParam, Tool, StopReason,
-    types::{CountTokensRequest},
-    Error,
+    types::CountTokensRequest, Client, ContentBlock, Error, MessageParam, Model, Role, StopReason,
+    Tool,
 };
 use serde_json::json;
 use std::time::Duration;
 use wiremock::{
-    matchers::{method, path, header},
+    matchers::{header, method, path},
     Mock, MockServer, ResponseTemplate,
 };
 
@@ -60,7 +59,8 @@ async fn test_successful_chat_request() {
 
     let client = create_mock_client(&mock_server).await;
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Hello"))
         .build();
 
@@ -131,7 +131,8 @@ async fn test_chat_request_with_system_and_tools() {
         }))
         .build();
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .system("You are a helpful calculator assistant.")
         .user_message(ContentBlock::text("Calculate 15 + 27"))
         .tool(calculator_tool)
@@ -143,7 +144,7 @@ async fn test_chat_request_with_system_and_tools() {
     assert_eq!(response.id, "msg_456");
     assert_eq!(response.stop_reason, Some(StopReason::ToolUse));
     assert_eq!(response.content.len(), 1);
-    
+
     match &response.content[0] {
         ContentBlock::ToolUse { id, name, input } => {
             assert_eq!(id, "toolu_123");
@@ -256,14 +257,15 @@ async fn test_api_error_handling() {
         .respond_with(
             ResponseTemplate::new(400)
                 .set_body_json(&error_response)
-                .insert_header("request-id", "req-123")
+                .insert_header("request-id", "req-123"),
         )
         .mount(&mock_server)
         .await;
 
     let client = create_mock_client(&mock_server).await;
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test"))
         .build();
 
@@ -273,7 +275,12 @@ async fn test_api_error_handling() {
     let error = result.unwrap_err();
     // The error could be either API or InvalidRequest depending on parsing
     match error {
-        Error::Api { status, message, error_type, request_id } => {
+        Error::Api {
+            status,
+            message,
+            error_type,
+            request_id,
+        } => {
             assert_eq!(status, reqwest::StatusCode::BAD_REQUEST);
             assert!(message.contains("missing required field"));
             assert_eq!(error_type, Some("invalid_request_error".to_string()));
@@ -307,7 +314,8 @@ async fn test_authentication_error() {
 
     let client = create_mock_client(&mock_server).await;
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test"))
         .build();
 
@@ -337,14 +345,15 @@ async fn test_rate_limit_error() {
         .respond_with(
             ResponseTemplate::new(429)
                 .set_body_json(&error_response)
-                .insert_header("request-id", "req-rate-limit")
+                .insert_header("request-id", "req-rate-limit"),
         )
         .mount(&mock_server)
         .await;
 
     let client = create_mock_client(&mock_server).await;
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test"))
         .build();
 
@@ -352,7 +361,10 @@ async fn test_rate_limit_error() {
 
     assert!(result.is_err());
     match result.unwrap_err() {
-        Error::RateLimit { retry_after, request_id } => {
+        Error::RateLimit {
+            retry_after,
+            request_id,
+        } => {
             assert_eq!(retry_after, Some(Duration::from_secs_f64(60.5)));
             assert_eq!(request_id, Some("req-rate-limit".to_string()));
         }
@@ -372,7 +384,8 @@ async fn test_server_error_retryable() {
 
     let client = create_mock_client(&mock_server).await;
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test"))
         .build();
 
@@ -394,7 +407,7 @@ async fn test_timeout_handling() {
         .respond_with(
             ResponseTemplate::new(200)
                 .set_body_json(&json!({"id": "msg_slow"}))
-                .set_delay(Duration::from_secs(2)) // Longer than client timeout
+                .set_delay(Duration::from_secs(2)), // Longer than client timeout
         )
         .mount(&mock_server)
         .await;
@@ -407,7 +420,8 @@ async fn test_timeout_handling() {
         .build()
         .unwrap();
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test"))
         .build();
 
@@ -450,12 +464,16 @@ async fn test_model_override() {
 
     let client = create_mock_client(&mock_server).await; // Default is Claude35Sonnet
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test with different model"))
         .build();
 
     // Use model override
-    let response = client.execute_chat_with_model(Model::Claude3Haiku20240307, request).await.unwrap();
+    let response = client
+        .execute_chat_with_model(Model::Claude3Haiku20240307, request)
+        .await
+        .unwrap();
 
     assert_eq!(response.model, Model::Claude3Haiku20240307);
     match &response.content[0] {
@@ -497,7 +515,8 @@ async fn test_conversation_with_history() {
 
     let client = create_mock_client(&mock_server).await;
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("What's 2+2?"))
         .assistant_message(ContentBlock::text("2+2 equals 4."))
         .user_message(ContentBlock::text("What about 3+3?"))
@@ -526,7 +545,8 @@ async fn test_invalid_json_response() {
 
     let client = create_mock_client(&mock_server).await;
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test"))
         .build();
 
@@ -565,19 +585,19 @@ async fn test_concurrent_requests() {
 
     let client = create_mock_client(&mock_server).await;
 
-    let request1 = client.chat_builder()
+    let request1 = client
+        .chat_builder()
         .user_message(ContentBlock::text("Request 1"))
         .build();
 
-    let request2 = client.chat_builder()
+    let request2 = client
+        .chat_builder()
         .user_message(ContentBlock::text("Request 2"))
         .build();
 
     // Make concurrent requests
-    let (result1, result2) = tokio::join!(
-        client.execute_chat(request1),
-        client.execute_chat(request2)
-    );
+    let (result1, result2) =
+        tokio::join!(client.execute_chat(request1), client.execute_chat(request2));
 
     assert!(result1.is_ok());
     assert!(result2.is_ok());

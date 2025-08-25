@@ -131,7 +131,10 @@ impl MessageAccumulator {
                 });
                 self.content_blocks.clear();
             }
-            StreamEvent::ContentBlockStart { index, content_block } => {
+            StreamEvent::ContentBlockStart {
+                index,
+                content_block,
+            } => {
                 // Ensure we have enough space in the content blocks vector
                 while self.content_blocks.len() <= index {
                     self.content_blocks.push(ContentBlock::text(""));
@@ -147,7 +150,11 @@ impl MessageAccumulator {
                 // Apply the delta to the content block
                 match delta {
                     ContentDelta::TextDelta { text } => {
-                        if let ContentBlock::Text { text: existing_text, citations: _ } = &mut self.content_blocks[index] {
+                        if let ContentBlock::Text {
+                            text: existing_text,
+                            citations: _,
+                        } = &mut self.content_blocks[index]
+                        {
                             existing_text.push_str(&text);
                         } else {
                             // If it's not a text block, replace it with a text block

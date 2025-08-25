@@ -6,7 +6,9 @@ use url::Url;
 use std::sync::Arc;
 
 use crate::{
-    client::{Client, ClientInner, RetryConfig, RequestMiddleware, RequestInterceptor, LoggingInterceptor},
+    client::{
+        Client, ClientInner, LoggingInterceptor, RequestInterceptor, RequestMiddleware, RetryConfig,
+    },
     error::Error,
     types::Model,
     Result,
@@ -55,7 +57,9 @@ impl Config {
 
         // Validate timeout
         if self.timeout.is_zero() {
-            return Err(Error::Config("Timeout must be greater than zero".to_string()));
+            return Err(Error::Config(
+                "Timeout must be greater than zero".to_string(),
+            ));
         }
 
         // Validate max_tokens against model limits
@@ -68,7 +72,9 @@ impl Config {
         }
 
         if self.max_tokens == 0 {
-            return Err(Error::Config("max_tokens must be greater than zero".to_string()));
+            return Err(Error::Config(
+                "max_tokens must be greater than zero".to_string(),
+            ));
         }
 
         // Validate base URL scheme
@@ -111,7 +117,10 @@ impl ClientBuilder {
 
     /// Set the base URL
     pub fn base_url(mut self, url: impl TryInto<Url>) -> Result<Self> {
-        self.base_url = Some(url.try_into().map_err(|_| Error::Config("Invalid base URL".to_string()))?);
+        self.base_url = Some(
+            url.try_into()
+                .map_err(|_| Error::Config("Invalid base URL".to_string()))?,
+        );
         Ok(self)
     }
 
@@ -294,10 +303,13 @@ mod tests {
             api_key: String::new(),
             ..Config::default()
         };
-        
+
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("API key cannot be empty"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("API key cannot be empty"));
     }
 
     #[test]
@@ -306,10 +318,13 @@ mod tests {
             api_key: "invalid-key".to_string(),
             ..Config::default()
         };
-        
+
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("API key must start with 'sk-ant-'"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("API key must start with 'sk-ant-'"));
     }
 
     #[test]
@@ -318,7 +333,7 @@ mod tests {
             api_key: "sk-ant-api03-test-key".to_string(),
             ..Config::default()
         };
-        
+
         let result = config.validate();
         assert!(result.is_ok());
     }
@@ -330,10 +345,13 @@ mod tests {
             timeout: Duration::from_secs(0),
             ..Config::default()
         };
-        
+
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Timeout must be greater than zero"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Timeout must be greater than zero"));
     }
 
     #[test]
@@ -343,10 +361,13 @@ mod tests {
             max_tokens: 0,
             ..Config::default()
         };
-        
+
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("max_tokens must be greater than zero"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("max_tokens must be greater than zero"));
     }
 
     #[test]
@@ -357,10 +378,13 @@ mod tests {
             max_tokens: 300_000, // Exceeds model limit of 200_000
             ..Config::default()
         };
-        
+
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("exceeds model limit"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exceeds model limit"));
     }
 
     #[test]
@@ -370,10 +394,13 @@ mod tests {
             base_url: "ftp://invalid.com".parse().unwrap(),
             ..Config::default()
         };
-        
+
         let result = config.validate();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Base URL must use http or https scheme"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Base URL must use http or https scheme"));
     }
 
     #[test]
@@ -383,7 +410,7 @@ mod tests {
             base_url: "http://localhost:8080".parse().unwrap(),
             ..Config::default()
         };
-        
+
         let result = config.validate();
         assert!(result.is_ok());
     }
@@ -460,7 +487,10 @@ mod tests {
         // Test missing API key
         let result = ClientBuilder::new().build();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("API key not provided"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("API key not provided"));
 
         // Test ANTHROPIC_API_KEY
         env::set_var("ANTHROPIC_API_KEY", "sk-ant-api03-env-key");
@@ -483,13 +513,19 @@ mod tests {
         let result = ClientBuilder::new().build();
         assert!(result.is_ok());
         let client = result.unwrap();
-        assert_eq!(client.inner.config.base_url.as_str(), "https://custom.api.com/");
+        assert_eq!(
+            client.inner.config.base_url.as_str(),
+            "https://custom.api.com/"
+        );
 
         // Test invalid base URL in env var
         env::set_var("ANTHROPIC_BASE_URL", "not-a-valid-url");
         let result = ClientBuilder::new().build();
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Invalid base URL in ANTHROPIC_BASE_URL"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid base URL in ANTHROPIC_BASE_URL"));
 
         // Test builder precedence over env vars
         env::set_var("ANTHROPIC_API_KEY", "sk-ant-api03-env-key");
@@ -502,7 +538,10 @@ mod tests {
         assert!(result.is_ok());
         let client = result.unwrap();
         assert_eq!(client.inner.config.api_key, "sk-ant-api03-builder-key");
-        assert_eq!(client.inner.config.base_url.as_str(), "https://builder.api.com/");
+        assert_eq!(
+            client.inner.config.base_url.as_str(),
+            "https://builder.api.com/"
+        );
 
         // Test ANTHROPIC_API_KEY priority over CLAUDE_API_KEY
         env::set_var("ANTHROPIC_API_KEY", "sk-ant-api03-anthropic-key");
@@ -516,7 +555,7 @@ mod tests {
         env::remove_var("ANTHROPIC_API_KEY");
         env::remove_var("CLAUDE_API_KEY");
         env::remove_var("ANTHROPIC_BASE_URL");
-        
+
         if let Some(val) = original_anthropic {
             env::set_var("ANTHROPIC_API_KEY", val);
         }
@@ -550,7 +589,10 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("API key must start with 'sk-ant-'"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("API key must start with 'sk-ant-'"));
     }
 
     #[test]
@@ -562,7 +604,10 @@ mod tests {
             .build();
 
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("exceeds model limit"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("exceeds model limit"));
     }
 
     #[test]
@@ -581,7 +626,7 @@ mod tests {
 
         let client = result.unwrap();
         let config = &client.inner.config;
-        
+
         assert_eq!(config.api_key, "sk-ant-api03-test-key");
         assert_eq!(config.base_url.as_str(), "https://custom.api.com/");
         assert_eq!(config.timeout, Duration::from_secs(30));
@@ -635,7 +680,7 @@ mod tests {
             .unwrap();
 
         let config = &client.inner.config;
-        
+
         // Check that default values are applied when not explicitly set
         assert_eq!(config.base_url.as_str(), "https://api.anthropic.com/");
         assert_eq!(config.timeout, Duration::from_secs(60));
@@ -647,7 +692,7 @@ mod tests {
     #[test]
     fn test_client_builder_with_retry_config() {
         use crate::client::RetryConfig;
-        
+
         let retry_config = RetryConfig {
             max_retries: 5,
             initial_delay: Duration::from_millis(100),
@@ -663,7 +708,10 @@ mod tests {
 
         let client_retry_config = &client.inner.retry_config;
         assert_eq!(client_retry_config.max_retries, 5);
-        assert_eq!(client_retry_config.initial_delay, Duration::from_millis(100));
+        assert_eq!(
+            client_retry_config.initial_delay,
+            Duration::from_millis(100)
+        );
         assert_eq!(client_retry_config.max_delay, Duration::from_secs(10));
         assert_eq!(client_retry_config.backoff_multiplier, 1.5);
     }
@@ -671,7 +719,7 @@ mod tests {
     #[test]
     fn test_client_builder_with_middleware() {
         use crate::client::RequestMiddleware;
-        
+
         let middleware = RequestMiddleware::default()
             .with_request_logging()
             .with_response_logging();
@@ -725,6 +773,4 @@ mod tests {
         assert!(!middleware.log_headers);
         assert!(!middleware.log_body);
     }
-
-
 }

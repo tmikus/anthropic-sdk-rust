@@ -8,9 +8,8 @@
 //! Run with: cargo test --test integration_tests
 
 use anthropic_rust::{
-    Client, Model, ContentBlock, Role, MessageParam, Tool,
-    types::{ChatRequest, SystemMessage, CountTokensRequest},
-    Error,
+    types::{ChatRequest, CountTokensRequest, SystemMessage},
+    Client, ContentBlock, Error, MessageParam, Model, Role, Tool,
 };
 use serde_json::json;
 use std::time::Duration;
@@ -27,7 +26,7 @@ async fn test_client_creation() {
         .build();
 
     assert!(client.is_ok());
-    
+
     let client = client.unwrap();
     assert_eq!(client.default_model(), Model::Claude35Sonnet20241022);
     assert_eq!(client.default_max_tokens(), 1000);
@@ -43,7 +42,8 @@ async fn test_chat_request_building() {
         .unwrap();
 
     // Test simple message
-    let simple_request = client.chat_builder()
+    let simple_request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Hello"))
         .build();
 
@@ -51,7 +51,8 @@ async fn test_chat_request_building() {
     assert_eq!(simple_request.messages[0].role, Role::User);
 
     // Test conversation with history
-    let conversation_request = client.chat_builder()
+    let conversation_request = client
+        .chat_builder()
         .system("You are a helpful assistant")
         .user_message(ContentBlock::text("What's 2+2?"))
         .assistant_message(ContentBlock::text("2+2 equals 4"))
@@ -65,12 +66,10 @@ async fn test_chat_request_building() {
 
     // Test manual request construction
     let manual_request = ChatRequest {
-        messages: vec![
-            MessageParam {
-                role: Role::User,
-                content: vec![ContentBlock::text("Manual request")],
-            }
-        ],
+        messages: vec![MessageParam {
+            role: Role::User,
+            content: vec![ContentBlock::text("Manual request")],
+        }],
         system: Some(vec![SystemMessage {
             message_type: "text".to_string(),
             text: "System prompt".to_string(),
@@ -102,25 +101,20 @@ async fn test_content_blocks() {
         anthropic_rust::ImageMediaType::Png,
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==".to_string()
     );
-    
+
     match image_content {
-        ContentBlock::Image { source } => {
-            match source {
-                anthropic_rust::ImageSource::Base64 { media_type, .. } => {
-                    assert_eq!(media_type, anthropic_rust::ImageMediaType::Png);
-                }
-                _ => panic!("Expected base64 image source"),
+        ContentBlock::Image { source } => match source {
+            anthropic_rust::ImageSource::Base64 { media_type, .. } => {
+                assert_eq!(media_type, anthropic_rust::ImageMediaType::Png);
             }
-        }
+            _ => panic!("Expected base64 image source"),
+        },
         _ => panic!("Expected image content block"),
     }
 
     // Test tool use content
-    let tool_use_content = ContentBlock::tool_use(
-        "test-id",
-        "test-tool",
-        json!({"param": "value"})
-    ).unwrap();
+    let tool_use_content =
+        ContentBlock::tool_use("test-id", "test-tool", json!({"param": "value"})).unwrap();
 
     match tool_use_content {
         ContentBlock::ToolUse { id, name, input } => {
@@ -134,7 +128,11 @@ async fn test_content_blocks() {
     // Test tool result content
     let tool_result_content = ContentBlock::tool_result("test-id", "Result text");
     match tool_result_content {
-        ContentBlock::ToolResult { tool_use_id, content, .. } => {
+        ContentBlock::ToolResult {
+            tool_use_id,
+            content,
+            ..
+        } => {
             assert_eq!(tool_use_id, "test-id");
             assert_eq!(content.len(), 1);
         }
@@ -160,7 +158,10 @@ async fn test_tool_definition() {
         .build();
 
     assert_eq!(simple_tool.name, "calculator");
-    assert_eq!(simple_tool.description, Some("Perform calculations".to_string()));
+    assert_eq!(
+        simple_tool.description,
+        Some("Perform calculations".to_string())
+    );
     assert!(simple_tool.input_schema.is_object());
 
     // Test tool in request
@@ -170,7 +171,8 @@ async fn test_tool_definition() {
         .build()
         .unwrap();
 
-    let request_with_tool = client.chat_builder()
+    let request_with_tool = client
+        .chat_builder()
         .user_message(ContentBlock::text("Calculate 5 + 3"))
         .tool(simple_tool)
         .build();
@@ -197,7 +199,8 @@ async fn test_error_handling() {
         .build()
         .unwrap();
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test message"))
         .build();
 
@@ -250,12 +253,10 @@ async fn test_token_counting() {
         .unwrap();
 
     let count_request = CountTokensRequest {
-        messages: vec![
-            MessageParam {
-                role: Role::User,
-                content: vec![ContentBlock::text("Hello, how are you?")],
-            }
-        ],
+        messages: vec![MessageParam {
+            role: Role::User,
+            content: vec![ContentBlock::text("Hello, how are you?")],
+        }],
         system: None,
         tools: None,
     };
@@ -274,11 +275,13 @@ async fn test_concurrent_requests() {
         .build()
         .unwrap();
 
-    let request1 = client.chat_builder()
+    let request1 = client
+        .chat_builder()
         .user_message(ContentBlock::text("Request 1"))
         .build();
 
-    let request2 = client.chat_builder()
+    let request2 = client
+        .chat_builder()
         .user_message(ContentBlock::text("Request 2"))
         .build();
 
@@ -305,7 +308,8 @@ async fn test_streaming_setup() {
         .build()
         .unwrap();
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Stream this response"))
         .build();
 
@@ -334,19 +338,19 @@ async fn test_multimodal_integration() {
         .build();
 
     assert_eq!(multimodal_request.messages.len(), 3);
-    
+
     // Verify content types
     let user_message = &multimodal_request.messages[0];
     assert_eq!(user_message.content.len(), 1);
     match &user_message.content[0] {
-        ContentBlock::Text { .. } => {},
+        ContentBlock::Text { .. } => {}
         _ => panic!("Expected text content"),
     }
 
     let image_message = &multimodal_request.messages[1];
     assert_eq!(image_message.content.len(), 1);
     match &image_message.content[0] {
-        ContentBlock::Image { .. } => {},
+        ContentBlock::Image { .. } => {}
         _ => panic!("Expected image content"),
     }
 }
@@ -374,12 +378,15 @@ async fn test_configuration_validation() {
     assert_eq!(client.default_max_tokens(), 4000);
 
     // Test model override
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test"))
         .build();
 
     // Test that model override method exists
-    let result = client.execute_chat_with_model(Model::Claude3Haiku20240307, request).await;
+    let result = client
+        .execute_chat_with_model(Model::Claude3Haiku20240307, request)
+        .await;
     assert!(result.is_err()); // Expected to fail with test key
 }
 
@@ -397,9 +404,10 @@ fn create_test_client() -> Client {
 #[tokio::test]
 async fn example_conversation_building() {
     let client = create_test_client();
-    
+
     // Start with system prompt
-    let mut builder = client.chat_builder()
+    let mut builder = client
+        .chat_builder()
         .system("You are a helpful coding assistant.");
 
     // Add user question
@@ -437,7 +445,8 @@ async fn example_tool_workflow() {
         .build();
 
     // Create request with tool
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .system("You are a math assistant. Use the calculator tool for computations.")
         .user_message(ContentBlock::text("What's 15 * 23?"))
         .tool(calculator)
@@ -453,7 +462,8 @@ async fn example_tool_workflow() {
 async fn example_error_handling_patterns() {
     let client = create_test_client();
 
-    let request = client.chat_builder()
+    let request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Test message"))
         .build();
 

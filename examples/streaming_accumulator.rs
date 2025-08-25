@@ -1,6 +1,6 @@
 //! Example demonstrating the MessageAccumulator for reconstructing complete messages from streams
 
-use anthropic_rust::{Client, Model, ContentBlock};
+use anthropic_rust::{Client, ContentBlock, Model};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,8 +11,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build()?;
 
     // Create a chat request
-    let request = client.chat_builder()
-        .user_message(ContentBlock::text("Explain what streaming is in 2-3 sentences."))
+    let request = client
+        .chat_builder()
+        .user_message(ContentBlock::text(
+            "Explain what streaming is in 2-3 sentences.",
+        ))
         .build();
 
     println!("Using MessageAccumulator to get complete message:");
@@ -21,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Stream the response and accumulate it
     let stream = client.stream_chat(request).await?;
     let accumulator = stream.accumulate();
-    
+
     // Get the final complete message
     let final_message = accumulator.accumulate().await?;
 
@@ -30,10 +33,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Role: {:?}", final_message.role);
     println!("Model: {:?}", final_message.model);
     println!("Stop reason: {:?}", final_message.stop_reason);
-    println!("Usage: {} input tokens, {} output tokens", 
-             final_message.usage.input_tokens, 
-             final_message.usage.output_tokens);
-    
+    println!(
+        "Usage: {} input tokens, {} output tokens",
+        final_message.usage.input_tokens, final_message.usage.output_tokens
+    );
+
     println!("\nContent:");
     for (i, content_block) in final_message.content.iter().enumerate() {
         match content_block {

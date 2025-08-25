@@ -1,9 +1,9 @@
 //! Example demonstrating the ChatRequest and ChatRequestBuilder functionality
 
 use anthropic_rust::{
-    Client, Model,
-    types::{ChatRequestBuilder, ContentBlock, Role, MessageParam},
     tools::Tool,
+    types::{ChatRequestBuilder, ContentBlock, MessageParam, Role},
+    Client, Model,
 };
 
 #[tokio::main]
@@ -19,7 +19,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Client default max_tokens: {}", client.default_max_tokens());
 
     // Example 1: Basic chat request using the builder
-    let basic_request = client.chat_builder()
+    let basic_request = client
+        .chat_builder()
         .user_message(ContentBlock::text("Hello, Claude!"))
         .assistant_message(ContentBlock::text("Hello! How can I help you today?"))
         .user_message(ContentBlock::text("What's the weather like?"))
@@ -34,7 +35,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 2: Chat request with system message and parameters
     let advanced_request = ChatRequestBuilder::new()
         .system("You are a helpful assistant that responds concisely.")
-        .user_message(ContentBlock::text("Explain quantum computing in simple terms."))
+        .user_message(ContentBlock::text(
+            "Explain quantum computing in simple terms.",
+        ))
         .temperature(0.7)
         .top_p(0.9)
         .stop_sequence("END")
@@ -58,7 +61,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build();
 
     println!("\n=== Multimodal Chat Request ===");
-    println!("Content blocks in first message: {}", multimodal_request.messages[0].content.len());
+    println!(
+        "Content blocks in first message: {}",
+        multimodal_request.messages[0].content.len()
+    );
 
     // Example 4: Tool usage
     let calculator_tool = Tool::new("calculator")
@@ -75,7 +81,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))
         .build();
 
-    let tool_request = client.chat_builder()
+    let tool_request = client
+        .chat_builder()
         .user_message(ContentBlock::text("What is 15 * 23?"))
         .tool(calculator_tool.clone())
         .build();
@@ -103,7 +110,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     ];
 
-    let bulk_request = client.chat_builder()
+    let bulk_request = client
+        .chat_builder()
         .messages(conversation_history)
         .user_message(ContentBlock::text("What can you help me with?"))
         .build();
@@ -112,15 +120,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Total messages: {}", bulk_request.messages.len());
 
     // Example 6: Complex request with all features
-    let complex_request = client.chat_builder()
+    let complex_request = client
+        .chat_builder()
         .system("You are an expert assistant.")
         .system("Always provide detailed explanations.")
-        .messages(vec![
-            MessageParam {
-                role: Role::User,
-                content: vec![ContentBlock::text("Previous context message")],
-            }
-        ])
+        .messages(vec![MessageParam {
+            role: Role::User,
+            content: vec![ContentBlock::text("Previous context message")],
+        }])
         .user_message(ContentBlock::text("Current question"))
         .temperature(0.8)
         .top_p(0.95)
@@ -130,9 +137,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n=== Complex Request ===");
     println!("Messages: {}", complex_request.messages.len());
-    println!("System messages: {}", complex_request.system.as_ref().map_or(0, |s| s.len()));
-    println!("Tools: {}", complex_request.tools.as_ref().map_or(0, |t| t.len()));
-    println!("Stop sequences: {}", complex_request.stop_sequences.as_ref().map_or(0, |s| s.len()));
+    println!(
+        "System messages: {}",
+        complex_request.system.as_ref().map_or(0, |s| s.len())
+    );
+    println!(
+        "Tools: {}",
+        complex_request.tools.as_ref().map_or(0, |t| t.len())
+    );
+    println!(
+        "Stop sequences: {}",
+        complex_request
+            .stop_sequences
+            .as_ref()
+            .map_or(0, |s| s.len())
+    );
 
     // Demonstrate serialization
     let json = serde_json::to_string_pretty(&complex_request)?;

@@ -16,8 +16,8 @@ use serde_json::Value;
 use crate::{
     config::{ClientBuilder, Config},
     error::Error,
-    types::{ChatRequest, ChatRequestBuilder, CountTokensRequest, Message, Model, TokenCount},
     streaming::MessageStream,
+    types::{ChatRequest, ChatRequestBuilder, CountTokensRequest, Message, Model, TokenCount},
     Result,
 };
 
@@ -217,11 +217,11 @@ impl RequestInterceptor for LoggingInterceptor {
     fn before_request(&self, request: &reqwest::Request) -> Result<()> {
         if self.log_requests {
             eprintln!("HTTP Request: {} {}", request.method(), request.url());
-            
+
             if self.log_headers {
                 eprintln!("Request Headers: {:?}", request.headers());
             }
-            
+
             if self.log_body {
                 if let Some(body) = request.body() {
                     if let Some(bytes) = body.as_bytes() {
@@ -238,7 +238,7 @@ impl RequestInterceptor for LoggingInterceptor {
     fn after_response(&self, response: &reqwest::Response) -> Result<()> {
         if self.log_responses {
             eprintln!("HTTP Response: {} {}", response.status(), response.url());
-            
+
             if self.log_headers {
                 eprintln!("Response Headers: {:?}", response.headers());
             }
@@ -354,7 +354,8 @@ impl ClientInner {
         path: &str,
         body: Option<Value>,
     ) -> Result<T> {
-        self.execute_request_with_timeout(method, path, body, None).await
+        self.execute_request_with_timeout(method, path, body, None)
+            .await
     }
 
     /// Execute an HTTP request with optional timeout override
@@ -365,15 +366,20 @@ impl ClientInner {
         body: Option<Value>,
         timeout_override: Option<Duration>,
     ) -> Result<T> {
-        let url = self.config.base_url.join(path)
+        let url = self
+            .config
+            .base_url
+            .join(path)
             .map_err(|e| Error::Config(format!("Invalid URL path '{}': {}", path, e)))?;
 
         let mut attempt = 0;
         let mut delay = self.retry_config.initial_delay;
 
         loop {
-            let request_result = self.build_request(method.clone(), &url, body.clone(), timeout_override).await;
-            
+            let request_result = self
+                .build_request(method.clone(), &url, body.clone(), timeout_override)
+                .await;
+
             match request_result {
                 Ok(response) => {
                     match self.handle_response::<T>(response).await {
@@ -383,14 +389,18 @@ impl ClientInner {
                             for interceptor in &self.middleware.interceptors {
                                 interceptor.on_error(&error);
                             }
-                            
+
                             if attempt >= self.retry_config.max_retries || !error.is_retryable() {
                                 return Err(error);
                             }
-                            
+
                             if self.middleware.log_requests {
-                                eprintln!("Request failed (attempt {}), retrying in {:?}: {}", 
-                                         attempt + 1, delay, error);
+                                eprintln!(
+                                    "Request failed (attempt {}), retrying in {:?}: {}",
+                                    attempt + 1,
+                                    delay,
+                                    error
+                                );
                             }
                         }
                     }
@@ -400,27 +410,33 @@ impl ClientInner {
                     for interceptor in &self.middleware.interceptors {
                         interceptor.on_error(&error);
                     }
-                    
+
                     if attempt >= self.retry_config.max_retries || !error.is_retryable() {
                         return Err(error);
                     }
-                    
+
                     if self.middleware.log_requests {
-                        eprintln!("Request failed (attempt {}), retrying in {:?}: {}", 
-                                 attempt + 1, delay, error);
+                        eprintln!(
+                            "Request failed (attempt {}), retrying in {:?}: {}",
+                            attempt + 1,
+                            delay,
+                            error
+                        );
                     }
                 }
             }
 
             // Wait before retrying
             tokio::time::sleep(delay).await;
-            
+
             // Exponential backoff
             delay = std::cmp::min(
-                Duration::from_millis((delay.as_millis() as f64 * self.retry_config.backoff_multiplier) as u64),
+                Duration::from_millis(
+                    (delay.as_millis() as f64 * self.retry_config.backoff_multiplier) as u64,
+                ),
                 self.retry_config.max_delay,
             );
-            
+
             attempt += 1;
         }
     }
@@ -446,7 +462,8 @@ impl ClientInner {
         }
 
         // Build the request for interceptors
-        let request = request_builder.try_clone()
+        let request = request_builder
+            .try_clone()
             .ok_or_else(|| Error::Config("Failed to clone request for interceptors".to_string()))?
             .build()
             .map_err(|e| Error::Config(format!("Failed to build request: {}", e)))?;
@@ -459,14 +476,18 @@ impl ClientInner {
         // Log request if middleware is enabled
         if self.middleware.log_requests {
             eprintln!("HTTP Request: {} {}", method, url);
-            
+
             if self.middleware.log_headers {
                 eprintln!("Request Headers: {:?}", request.headers());
             }
-            
+
             if self.middleware.log_body {
                 if let Some(body) = &body {
-                    eprintln!("Request Body: {}", serde_json::to_string_pretty(body).unwrap_or_else(|_| "Invalid JSON".to_string()));
+                    eprintln!(
+                        "Request Body: {}",
+                        serde_json::to_string_pretty(body)
+                            .unwrap_or_else(|_| "Invalid JSON".to_string())
+                    );
                 }
             }
         }
@@ -491,7 +512,7 @@ impl ClientInner {
         // Log response if middleware is enabled
         if self.middleware.log_responses {
             eprintln!("HTTP Response: {} {}", response.status(), response.url());
-            
+
             if self.middleware.log_headers {
                 eprintln!("Response Headers: {:?}", response.headers());
             }
@@ -509,22 +530,22 @@ impl ClientInner {
         // Handle successful responses
         if status.is_success() {
             let response_text = response.text().await.map_err(Error::Http)?;
-            
+
             if self.middleware.log_responses && self.middleware.log_body {
                 eprintln!("Response Body: {}", response_text);
             }
-            
+
             serde_json::from_str(&response_text).map_err(|e| {
                 Error::InvalidResponse(format!("Failed to parse JSON response: {}", e))
             })
         } else {
             // Handle error responses
             let response_text = response.text().await.map_err(Error::Http)?;
-            
+
             if self.middleware.log_responses && self.middleware.log_body {
                 eprintln!("Error Response Body: {}", response_text);
             }
-            
+
             self.handle_error_response(status, &response_text, request_id)
         }
     }
@@ -536,7 +557,8 @@ impl ClientInner {
         path: &str,
         body: Option<Value>,
     ) -> Result<MessageStream> {
-        self.execute_streaming_request_with_timeout(path, body, None).await
+        self.execute_streaming_request_with_timeout(path, body, None)
+            .await
     }
 
     /// Execute a streaming HTTP request with optional timeout override
@@ -546,38 +568,49 @@ impl ClientInner {
         body: Option<Value>,
         timeout_override: Option<Duration>,
     ) -> Result<MessageStream> {
-        let url = self.config.base_url.join(path)
+        let url = self
+            .config
+            .base_url
+            .join(path)
             .map_err(|e| Error::Config(format!("Invalid URL path '{}': {}", path, e)))?;
 
         let mut attempt = 0;
         let mut delay = self.retry_config.initial_delay;
 
         loop {
-            let request_result = self.build_streaming_request(&url, body.clone(), timeout_override).await;
-            
+            let request_result = self
+                .build_streaming_request(&url, body.clone(), timeout_override)
+                .await;
+
             match request_result {
                 Ok(stream) => return Ok(stream),
                 Err(error) => {
                     if attempt >= self.retry_config.max_retries || !error.is_retryable() {
                         return Err(error);
                     }
-                    
+
                     if self.middleware.log_requests {
-                        eprintln!("Streaming request failed (attempt {}), retrying in {:?}: {}", 
-                                 attempt + 1, delay, error);
+                        eprintln!(
+                            "Streaming request failed (attempt {}), retrying in {:?}: {}",
+                            attempt + 1,
+                            delay,
+                            error
+                        );
                     }
                 }
             }
 
             // Wait before retrying
             tokio::time::sleep(delay).await;
-            
+
             // Exponential backoff
             delay = std::cmp::min(
-                Duration::from_millis((delay.as_millis() as f64 * self.retry_config.backoff_multiplier) as u64),
+                Duration::from_millis(
+                    (delay.as_millis() as f64 * self.retry_config.backoff_multiplier) as u64,
+                ),
                 self.retry_config.max_delay,
             );
-            
+
             attempt += 1;
         }
     }
@@ -589,8 +622,6 @@ impl ClientInner {
         body: Option<Value>,
         timeout_override: Option<Duration>,
     ) -> Result<MessageStream> {
-
-
         let mut request_builder = self.http_client.post(url.clone());
 
         // Apply timeout override if provided
@@ -604,7 +635,8 @@ impl ClientInner {
         }
 
         // Build the request for interceptors
-        let request = request_builder.try_clone()
+        let request = request_builder
+            .try_clone()
             .ok_or_else(|| Error::Config("Failed to clone request for interceptors".to_string()))?
             .build()
             .map_err(|e| Error::Config(format!("Failed to build request: {}", e)))?;
@@ -617,10 +649,14 @@ impl ClientInner {
         // Log request if middleware is enabled
         if self.middleware.log_requests {
             eprintln!("HTTP Streaming Request: POST {}", url);
-            
+
             if self.middleware.log_body {
                 if let Some(body) = &body {
-                    eprintln!("Request Body: {}", serde_json::to_string_pretty(body).unwrap_or_else(|_| "Invalid JSON".to_string()));
+                    eprintln!(
+                        "Request Body: {}",
+                        serde_json::to_string_pretty(body)
+                            .unwrap_or_else(|_| "Invalid JSON".to_string())
+                    );
                 }
             }
         }
@@ -644,11 +680,11 @@ impl ClientInner {
         // Handle error responses
         if !status.is_success() {
             let response_text = response.text().await.map_err(Error::Http)?;
-            
+
             if self.middleware.log_responses && self.middleware.log_body {
                 eprintln!("Error Response Body: {}", response_text);
             }
-            
+
             return self.handle_error_response(status, &response_text, request_id);
         }
 
@@ -659,8 +695,12 @@ impl ClientInner {
 
         // Log response if middleware is enabled
         if self.middleware.log_responses {
-            eprintln!("HTTP Streaming Response: {} {}", response.status(), response.url());
-            
+            eprintln!(
+                "HTTP Streaming Response: {} {}",
+                response.status(),
+                response.url()
+            );
+
             if self.middleware.log_headers {
                 eprintln!("Response Headers: {:?}", response.headers());
             }
@@ -668,9 +708,9 @@ impl ClientInner {
 
         // For now, return a simple stream that produces a mock event
         // This will be improved in a future iteration
+        use crate::streaming::{PartialMessage, StreamEvent};
         use futures::stream;
-        use crate::streaming::{StreamEvent, PartialMessage};
-        
+
         let mock_events = vec![
             Ok(StreamEvent::MessageStart {
                 message: PartialMessage {
@@ -692,57 +732,65 @@ impl ClientInner {
         ];
 
         let event_stream = stream::iter(mock_events);
-        let boxed_stream: Pin<Box<dyn Stream<Item = std::result::Result<StreamEvent, Error>> + Send>> = 
-            Box::pin(event_stream);
+        let boxed_stream: Pin<
+            Box<dyn Stream<Item = std::result::Result<StreamEvent, Error>> + Send>,
+        > = Box::pin(event_stream);
 
         Ok(MessageStream::new(boxed_stream))
     }
 
     /// Handle error responses from the API
-    fn handle_error_response<T>(&self, status: StatusCode, body: &str, request_id: Option<String>) -> Result<T> {
+    fn handle_error_response<T>(
+        &self,
+        status: StatusCode,
+        body: &str,
+        request_id: Option<String>,
+    ) -> Result<T> {
         // Try to parse error response as JSON
         let error_info = serde_json::from_str::<Value>(body).ok();
-        
+
         let (message, error_type) = if let Some(error_json) = error_info {
-            let message = error_json.get("error")
+            let message = error_json
+                .get("error")
                 .and_then(|e| e.get("message"))
                 .and_then(|m| m.as_str())
                 .unwrap_or("Unknown error")
                 .to_string();
-            
-            let error_type = error_json.get("error")
+
+            let error_type = error_json
+                .get("error")
                 .and_then(|e| e.get("type"))
                 .and_then(|t| t.as_str())
                 .map(|s| s.to_string());
-            
+
             (message, error_type)
         } else {
             (body.to_string(), None)
         };
 
         match status {
-            StatusCode::UNAUTHORIZED => {
-                Err(Error::Authentication(format!("Invalid API key: {}", message)))
-            }
-            StatusCode::FORBIDDEN => {
-                Err(Error::Authentication(format!("Access forbidden: {}", message)))
-            }
+            StatusCode::UNAUTHORIZED => Err(Error::Authentication(format!(
+                "Invalid API key: {}",
+                message
+            ))),
+            StatusCode::FORBIDDEN => Err(Error::Authentication(format!(
+                "Access forbidden: {}",
+                message
+            ))),
             StatusCode::TOO_MANY_REQUESTS => {
                 let retry_after = extract_retry_after_duration(body);
                 Err(Error::rate_limit(retry_after, request_id))
             }
-            StatusCode::BAD_REQUEST => {
-                Err(Error::InvalidRequest(message))
-            }
-            StatusCode::NOT_FOUND => {
-                Err(Error::InvalidRequest(format!("Resource not found: {}", message)))
-            }
-            StatusCode::UNPROCESSABLE_ENTITY => {
-                Err(Error::InvalidRequest(format!("Validation error: {}", message)))
-            }
-            _ => {
-                Err(Error::api(status, message, error_type, request_id))
-            }
+            StatusCode::BAD_REQUEST => Err(Error::InvalidRequest(message)),
+            StatusCode::NOT_FOUND => Err(Error::InvalidRequest(format!(
+                "Resource not found: {}",
+                message
+            ))),
+            StatusCode::UNPROCESSABLE_ENTITY => Err(Error::InvalidRequest(format!(
+                "Validation error: {}",
+                message
+            ))),
+            _ => Err(Error::api(status, message, error_type, request_id)),
         }
     }
 }
@@ -863,7 +911,8 @@ impl Client {
     /// }
     /// ```
     pub async fn execute_chat(&self, request: ChatRequest) -> Result<Message> {
-        self.execute_chat_with_model(self.inner.config.model.clone(), request).await
+        self.execute_chat_with_model(self.inner.config.model.clone(), request)
+            .await
     }
 
     /// Execute a chat request with a specific model override.
@@ -951,18 +1000,20 @@ impl Client {
     ) -> Result<Message> {
         // Create the request body with model and max_tokens
         let mut body = serde_json::to_value(&request)?;
-        
+
         // Add model and max_tokens to the request
         body["model"] = serde_json::to_value(&model)?;
         body["max_tokens"] = serde_json::to_value(self.inner.config.max_tokens)?;
-        
+
         // Execute the request with optional timeout override
-        self.inner.execute_request_with_timeout(
-            reqwest::Method::POST,
-            "/v1/messages",
-            Some(body),
-            timeout,
-        ).await
+        self.inner
+            .execute_request_with_timeout(
+                reqwest::Method::POST,
+                "/v1/messages",
+                Some(body),
+                timeout,
+            )
+            .await
     }
 
     /// Execute a chat request with timeout override using the client's default model.
@@ -1000,7 +1051,8 @@ impl Client {
         request: ChatRequest,
         timeout: Duration,
     ) -> Result<Message> {
-        self.execute_chat_with_options(self.inner.config.model.clone(), request, Some(timeout)).await
+        self.execute_chat_with_options(self.inner.config.model.clone(), request, Some(timeout))
+            .await
     }
 
     /// Stream a chat request using the client's configured model and max_tokens.
@@ -1050,7 +1102,8 @@ impl Client {
     /// }
     /// ```
     pub async fn stream_chat(&self, request: ChatRequest) -> Result<MessageStream> {
-        self.stream_chat_with_model(self.inner.config.model.clone(), request).await
+        self.stream_chat_with_model(self.inner.config.model.clone(), request)
+            .await
     }
 
     /// Stream a chat request with a specific model override.
@@ -1141,14 +1194,16 @@ impl Client {
     ) -> Result<MessageStream> {
         // Create the request body with model, max_tokens, and stream=true
         let mut body = serde_json::to_value(&request)?;
-        
+
         // Add model and max_tokens to the request
         body["model"] = serde_json::to_value(&model)?;
         body["max_tokens"] = serde_json::to_value(self.inner.config.max_tokens)?;
         body["stream"] = serde_json::Value::Bool(true);
-        
+
         // Execute the streaming request with optional timeout override
-        self.inner.execute_streaming_request_with_timeout("/v1/messages", Some(body), timeout).await
+        self.inner
+            .execute_streaming_request_with_timeout("/v1/messages", Some(body), timeout)
+            .await
     }
 
     /// Stream a chat request with timeout override using the client's default model.
@@ -1189,7 +1244,8 @@ impl Client {
         request: ChatRequest,
         timeout: Duration,
     ) -> Result<MessageStream> {
-        self.stream_chat_with_options(self.inner.config.model.clone(), request, Some(timeout)).await
+        self.stream_chat_with_options(self.inner.config.model.clone(), request, Some(timeout))
+            .await
     }
 
     /// Count tokens in a request without sending it to Claude.
@@ -1234,16 +1290,18 @@ impl Client {
     pub async fn count_tokens(&self, request: CountTokensRequest) -> Result<TokenCount> {
         // Create the request body with model
         let mut body = serde_json::to_value(&request)?;
-        
+
         // Add model to the request
         body["model"] = serde_json::to_value(&self.inner.config.model)?;
-        
+
         // Execute the request
-        self.inner.execute_request(
-            reqwest::Method::POST,
-            "/v1/messages/count_tokens",
-            Some(body),
-        ).await
+        self.inner
+            .execute_request(
+                reqwest::Method::POST,
+                "/v1/messages/count_tokens",
+                Some(body),
+            )
+            .await
     }
 
     /// Create a new chat request builder.
@@ -1325,7 +1383,8 @@ impl Client {
 
 /// Extract request ID from response headers
 pub(crate) fn extract_request_id(headers: &HeaderMap) -> Option<String> {
-    headers.get("request-id")
+    headers
+        .get("request-id")
         .or_else(|| headers.get("x-request-id"))
         .and_then(|value| value.to_str().ok())
         .map(|s| s.to_string())
@@ -1335,14 +1394,15 @@ pub(crate) fn extract_request_id(headers: &HeaderMap) -> Option<String> {
 pub(crate) fn extract_retry_after_duration(body: &str) -> Option<Duration> {
     // Try to parse JSON and look for retry_after field
     if let Ok(json) = serde_json::from_str::<Value>(body) {
-        if let Some(retry_after) = json.get("error")
+        if let Some(retry_after) = json
+            .get("error")
             .and_then(|e| e.get("retry_after"))
-            .and_then(|r| r.as_f64()) 
+            .and_then(|r| r.as_f64())
         {
             return Some(Duration::from_secs_f64(retry_after));
         }
     }
-    
+
     None
 }
 

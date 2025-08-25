@@ -9,16 +9,14 @@
 //!
 //! Run with: cargo run --example tools
 
-use anthropic_rust::{
-    Client, Model, ContentBlock, Tool,
-};
+use anthropic_rust::{Client, ContentBlock, Model, Tool};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
-    
+
     println!("=== Anthropic Rust SDK - Tool Calling Examples ===\n");
 
     // Create client
@@ -37,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 1: Simple calculator tool
     println!("1. Simple Calculator Tool");
     println!("========================");
-    
+
     let calculator_tool = Tool::new("calculate")
         .description("Perform basic arithmetic calculations")
         .schema_value(json!({
@@ -70,32 +68,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match client.execute_chat(request).await {
         Ok(response) => {
             println!("User: What's 15 * 23 + 7?");
-            
+
             for content in &response.content {
                 match content {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
                     ContentBlock::ToolUse { id, name, input } => {
-                        println!("🔧 Claude wants to use tool '{}' with input: {}", name, input);
-                        
+                        println!(
+                            "🔧 Claude wants to use tool '{}' with input: {}",
+                            name, input
+                        );
+
                         // Simulate tool execution
                         let result = execute_calculator_tool(input);
                         println!("📊 Tool result: {}", result);
-                        
+
                         // Continue conversation with tool result
-                        let follow_up = client.chat_builder()
+                        let follow_up = client
+                            .chat_builder()
                             .system("You are a helpful assistant with access to a calculator.")
                             .user_message(ContentBlock::text("What's 15 * 23 + 7?"))
                             .assistant_message(content.clone())
                             .assistant_message(ContentBlock::tool_result(
                                 id.clone(),
-                                result.to_string()
+                                result.to_string(),
                             ))
                             .build();
 
                         if let Ok(final_response) = client.execute_chat(follow_up).await {
-                            if let Some(ContentBlock::Text { text, .. }) = final_response.content.first() {
+                            if let Some(ContentBlock::Text { text, .. }) =
+                                final_response.content.first()
+                            {
                                 println!("Claude: {}", text);
                             }
                         }
@@ -110,7 +114,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 2: Weather tool with error handling
     println!("\n2. Weather Tool with Error Handling");
     println!("==================================");
-    
+
     let weather_tool = Tool::new("get_weather")
         .description("Get current weather information for a location")
         .schema_value(json!({
@@ -131,24 +135,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))
         .build();
 
-    let weather_request = client.chat_builder()
+    let weather_request = client
+        .chat_builder()
         .system("You are a weather assistant. Use the weather tool to get current conditions.")
-        .user_message(ContentBlock::text("What's the weather like in Tokyo and London?"))
+        .user_message(ContentBlock::text(
+            "What's the weather like in Tokyo and London?",
+        ))
         .tool(weather_tool)
         .build();
 
     match client.execute_chat(weather_request).await {
         Ok(response) => {
             println!("User: What's the weather like in Tokyo and London?");
-            
+
             for content in &response.content {
                 match content {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
                     ContentBlock::ToolUse { id: _, name, input } => {
-                        println!("🌤️  Claude wants to use tool '{}' with input: {}", name, input);
-                        
+                        println!(
+                            "🌤️  Claude wants to use tool '{}' with input: {}",
+                            name, input
+                        );
+
                         // Simulate weather API call
                         let weather_result = get_mock_weather(input);
                         println!("🌡️  Weather result: {}", weather_result);
@@ -163,7 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 3: Multiple tools workflow
     println!("\n3. Multiple Tools Workflow");
     println!("=========================");
-    
+
     let search_tool = Tool::new("web_search")
         .description("Search the web for information")
         .schema_value(json!({
@@ -212,15 +222,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match client.execute_chat(multi_tool_request).await {
         Ok(response) => {
             println!("User: Find information about quantum computing and summarize it.");
-            
+
             for content in &response.content {
                 match content {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
                     ContentBlock::ToolUse { id: _, name, input } => {
-                        println!("🔍 Claude wants to use tool '{}' with input: {}", name, input);
-                        
+                        println!(
+                            "🔍 Claude wants to use tool '{}' with input: {}",
+                            name, input
+                        );
+
                         match name.as_str() {
                             "web_search" => {
                                 let search_results = mock_web_search(input);
@@ -245,7 +258,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 4: Tool with complex schema (file operations)
     println!("\n4. Complex Tool Schema - File Operations");
     println!("=======================================");
-    
+
     let file_tool = Tool::new("file_operations")
         .description("Perform file system operations")
         .schema_value(json!({
@@ -293,15 +306,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match client.execute_chat(file_request).await {
         Ok(response) => {
             println!("User: Can you list the files in the current directory?");
-            
+
             for content in &response.content {
                 match content {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
                     ContentBlock::ToolUse { id: _, name, input } => {
-                        println!("📁 Claude wants to use tool '{}' with input: {}", name, input);
-                        
+                        println!(
+                            "📁 Claude wants to use tool '{}' with input: {}",
+                            name, input
+                        );
+
                         let file_result = mock_file_operation(input);
                         println!("📋 File operation result: {}", file_result);
                     }
@@ -315,7 +331,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Example 5: Tool error handling
     println!("\n5. Tool Error Handling");
     println!("=====================");
-    
+
     let api_tool = Tool::new("api_call")
         .description("Make API calls to external services")
         .schema_value(json!({
@@ -352,22 +368,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match client.execute_chat(api_request).await {
         Ok(response) => {
             println!("User: Check if the GitHub API is working...");
-            
+
             for content in &response.content {
                 match content {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
                     ContentBlock::ToolUse { id: _, name, input } => {
-                        println!("🌐 Claude wants to use tool '{}' with input: {}", name, input);
-                        
+                        println!(
+                            "🌐 Claude wants to use tool '{}' with input: {}",
+                            name, input
+                        );
+
                         // Simulate API call with potential error
                         let api_result = mock_api_call(input);
                         println!("📡 API result: {}", api_result);
-                        
+
                         // Show how to handle tool errors
                         if api_result.contains("error") {
-                            println!("⚠️  Tool returned an error - Claude should handle this gracefully");
+                            println!(
+                                "⚠️  Tool returned an error - Claude should handle this gracefully"
+                            );
                         }
                     }
                     _ => {}
@@ -379,7 +400,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n=== Tool Calling Examples Complete ===");
     println!("💡 Try running with a valid ANTHROPIC_API_KEY to see real tool interactions!");
-    
+
     Ok(())
 }
 
@@ -389,12 +410,18 @@ fn execute_calculator_tool(input: &Value) -> f64 {
     let operation = input["operation"].as_str().unwrap_or("add");
     let a = input["a"].as_f64().unwrap_or(0.0);
     let b = input["b"].as_f64().unwrap_or(0.0);
-    
+
     match operation {
         "add" => a + b,
         "subtract" => a - b,
         "multiply" => a * b,
-        "divide" => if b != 0.0 { a / b } else { f64::NAN },
+        "divide" => {
+            if b != 0.0 {
+                a / b
+            } else {
+                f64::NAN
+            }
+        }
         _ => 0.0,
     }
 }
@@ -402,7 +429,7 @@ fn execute_calculator_tool(input: &Value) -> f64 {
 fn get_mock_weather(input: &Value) -> String {
     let location = input["location"].as_str().unwrap_or("Unknown");
     let units = input["units"].as_str().unwrap_or("celsius");
-    
+
     // Mock weather data
     let weather_data = HashMap::from([
         ("Tokyo", ("Sunny", 22)),
@@ -410,7 +437,7 @@ fn get_mock_weather(input: &Value) -> String {
         ("New York", ("Rainy", 18)),
         ("Sydney", ("Partly Cloudy", 25)),
     ]);
-    
+
     if let Some((condition, temp)) = weather_data.get(location) {
         let temp_str = if units == "fahrenheit" {
             format!("{}°F", temp * 9 / 5 + 32)
@@ -426,7 +453,7 @@ fn get_mock_weather(input: &Value) -> String {
 fn mock_web_search(input: &Value) -> String {
     let query = input["query"].as_str().unwrap_or("");
     let max_results = input["max_results"].as_i64().unwrap_or(5);
-    
+
     format!(
         "Found {} results for '{}': [Mock results would include recent articles about quantum computing breakthroughs, new quantum processors, and research developments]",
         max_results, query
@@ -436,7 +463,7 @@ fn mock_web_search(input: &Value) -> String {
 fn mock_summarize(input: &Value) -> String {
     let _text = input["text"].as_str().unwrap_or("");
     let max_length = input["max_length"].as_i64().unwrap_or(100);
-    
+
     format!(
         "Summary (max {} words): Recent quantum computing developments include advances in error correction, new qubit technologies, and increased computational capabilities. Major tech companies are making significant investments in quantum research.",
         max_length
@@ -446,10 +473,16 @@ fn mock_summarize(input: &Value) -> String {
 fn mock_file_operation(input: &Value) -> String {
     let operation = input["operation"].as_str().unwrap_or("list");
     let path = input["path"].as_str().unwrap_or(".");
-    
+
     match operation {
-        "list" => format!("Files in '{}': Cargo.toml, src/, examples/, README.md, .gitignore", path),
-        "read" => format!("Content of '{}': [File content would be displayed here]", path),
+        "list" => format!(
+            "Files in '{}': Cargo.toml, src/, examples/, README.md, .gitignore",
+            path
+        ),
+        "read" => format!(
+            "Content of '{}': [File content would be displayed here]",
+            path
+        ),
         "write" => format!("Successfully wrote to '{}'", path),
         "delete" => format!("Successfully deleted '{}'", path),
         "create_dir" => format!("Successfully created directory '{}'", path),
@@ -460,7 +493,7 @@ fn mock_file_operation(input: &Value) -> String {
 fn mock_api_call(input: &Value) -> String {
     let url = input["url"].as_str().unwrap_or("");
     let method = input["method"].as_str().unwrap_or("GET");
-    
+
     if url.contains("github.com") {
         format!(
             "{} {}: {{\"login\": \"octocat\", \"id\": 1, \"name\": \"The Octocat\", \"public_repos\": 8}}",
