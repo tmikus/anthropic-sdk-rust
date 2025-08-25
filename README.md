@@ -1,7 +1,7 @@
 # Anthropic Rust SDK
 
-[![Crates.io](https://img.shields.io/crates/v/anthropic.svg)](https://crates.io/crates/anthropic)
-[![Documentation](https://docs.rs/anthropic/badge.svg)](https://docs.rs/anthropic)
+[![Crates.io](https://img.shields.io/crates/v/anthropic.svg)](https://crates.io/crates/anthropic_rust)
+[![Documentation](https://docs.rs/anthropic/badge.svg)](https://docs.rs/anthropic_rust)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A modern, idiomatic Rust SDK for the [Anthropic API](https://docs.anthropic.com/), providing type-safe, async-first access to Claude models.
