@@ -190,10 +190,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Rust 1.70.0 (MSRV)
+    - name: Install Rust 1.89 
       uses: dtolnay/rust-toolchain@master
       with:
-        toolchain: 1.70.0
+        toolchain: 1.89.0
 
     - name: Cache dependencies
       uses: actions/cache@v3
