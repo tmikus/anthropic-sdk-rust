@@ -70,12 +70,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             StreamEvent::ContentBlockDelta { delta, .. } => {
-                                if let anthropic::ContentDelta::TextDelta { text } = delta {
-                                    print!("{}", text);
-                                    accumulated_text.push_str(&text);
-                                    token_count += text.split_whitespace().count();
-                                    io::stdout().flush()?;
-                                }
+                                let anthropic::ContentDelta::TextDelta { text } = delta;
+                                print!("{}", text);
+                                accumulated_text.push_str(&text);
+                                token_count += text.split_whitespace().count();
+                                io::stdout().flush()?;
                             }
                             StreamEvent::ContentBlockStop { index } => {
                                 if index == 0 {
@@ -183,11 +182,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 while let Some(event_result) = stream.next().await {
                     match event_result {
                         Ok(StreamEvent::ContentBlockDelta { delta, .. }) => {
-                            if let anthropic::ContentDelta::TextDelta { text } = delta {
-                                print!("{}", text);
-                                char_count += text.len();
-                                io::stdout().flush()?;
-                            }
+                            let anthropic::ContentDelta::TextDelta { text } = delta;
+                            print!("{}", text);
+                            char_count += text.len();
+                            io::stdout().flush()?;
                         }
                         Ok(StreamEvent::MessageStop) => {
                             let duration = start.elapsed();
@@ -235,12 +233,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 io::stdout().flush()?;
                             }
                             StreamEvent::ContentBlockDelta { delta, .. } => {
-                                if let anthropic::ContentDelta::TextDelta { text } = delta {
-                                    progress_chars += text.len();
-                                    if progress_chars % 50 == 0 {
-                                        print!(".");
-                                        io::stdout().flush()?;
-                                    }
+                                let anthropic::ContentDelta::TextDelta { text } = delta;
+                                progress_chars += text.len();
+                                if progress_chars % 50 == 0 {
+                                    print!(".");
+                                    io::stdout().flush()?;
                                 }
                             }
                             StreamEvent::MessageStop => {

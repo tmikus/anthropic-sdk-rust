@@ -10,9 +10,7 @@
 //! Run with: cargo run --example tools
 
 use anthropic::{
-    Client, Model, ContentBlock, Role, MessageParam, Tool,
-    types::{ChatRequest, SystemMessage},
-    Error,
+    Client, Model, ContentBlock, Tool,
 };
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -148,7 +146,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
-                    ContentBlock::ToolUse { id, name, input } => {
+                    ContentBlock::ToolUse { id: _, name, input } => {
                         println!("🌤️  Claude wants to use tool '{}' with input: {}", name, input);
                         
                         // Simulate weather API call
@@ -220,7 +218,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
-                    ContentBlock::ToolUse { id, name, input } => {
+                    ContentBlock::ToolUse { id: _, name, input } => {
                         println!("🔍 Claude wants to use tool '{}' with input: {}", name, input);
                         
                         match name.as_str() {
@@ -301,7 +299,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
-                    ContentBlock::ToolUse { id, name, input } => {
+                    ContentBlock::ToolUse { id: _, name, input } => {
                         println!("📁 Claude wants to use tool '{}' with input: {}", name, input);
                         
                         let file_result = mock_file_operation(input);
@@ -360,7 +358,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ContentBlock::Text { text, .. } => {
                         println!("Claude: {}", text);
                     }
-                    ContentBlock::ToolUse { id, name, input } => {
+                    ContentBlock::ToolUse { id: _, name, input } => {
                         println!("🌐 Claude wants to use tool '{}' with input: {}", name, input);
                         
                         // Simulate API call with potential error
@@ -436,7 +434,7 @@ fn mock_web_search(input: &Value) -> String {
 }
 
 fn mock_summarize(input: &Value) -> String {
-    let text = input["text"].as_str().unwrap_or("");
+    let _text = input["text"].as_str().unwrap_or("");
     let max_length = input["max_length"].as_i64().unwrap_or(100);
     
     format!(

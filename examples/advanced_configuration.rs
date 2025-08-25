@@ -10,8 +10,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anthropic::{
-    Client, ClientBuilder, ContentBlock, LoggingInterceptor, Model, RequestInterceptor,
-    RequestMiddleware, RetryConfig, Result,
+    ClientBuilder, ContentBlock, LoggingInterceptor, Model, RequestInterceptor,
+    RetryConfig, Result,
 };
 
 /// Custom interceptor that tracks request metrics

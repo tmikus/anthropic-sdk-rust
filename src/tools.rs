@@ -138,6 +138,7 @@ impl ToolBuilder {
 /// // Tool with schema using schemars (requires schemars feature)
 /// #[cfg(feature = "schemars")]
 /// {
+///     use anthropic::tool_with_schema;
 ///     use serde::{Deserialize, Serialize};
 ///     use schemars::JsonSchema;
 ///     
@@ -148,7 +149,7 @@ impl ToolBuilder {
 ///         b: f64,
 ///     }
 ///     
-///     let tool3 = tool!("calculator", "A calculator tool", CalculatorInput);
+///     let tool3 = tool_with_schema!("calculator", "A calculator tool", CalculatorInput);
 /// }
 /// ```
 #[macro_export]
@@ -370,7 +371,7 @@ mod tests {
             units: Option<String>,
         }
 
-        let tool = tool!("weather", "Get weather information", WeatherInput);
+        let tool = tool_with_schema!("weather", "Get weather information", WeatherInput);
         
         assert_eq!(tool.name, "weather");
         assert_eq!(tool.description, Some("Get weather information".to_string()));

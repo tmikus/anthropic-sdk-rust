@@ -12,9 +12,7 @@
 use anthropic::{
     Client, Model, ContentBlock, Role, MessageParam,
     types::{ChatRequest, SystemMessage},
-    Error,
 };
-use std::io::{self, Write};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

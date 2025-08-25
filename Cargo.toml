@@ -2,13 +2,25 @@
 name = "anthropic"
 version = "0.1.0"
 edition = "2021"
-authors = ["Anthropic SDK Team"]
-description = "Rust SDK for the Anthropic API"
+rust-version = "1.70"
+authors = ["Tomasz Mikus <hi@tomaszmik.us>"]
+description = "A modern, type-safe Rust SDK for the Anthropic API, providing async-first access to Claude models with comprehensive error handling and streaming support."
 license = "MIT"
 repository = "https://github.com/anthropics/anthropic-sdk-rust"
+homepage = "https://github.com/anthropics/anthropic-sdk-rust"
+documentation = "https://docs.rs/anthropic"
 keywords = ["anthropic", "claude", "ai", "api", "sdk"]
-categories = ["api-bindings", "web-programming::http-client"]
+categories = ["api-bindings", "web-programming::http-client", "asynchronous"]
 readme = "README.md"
+include = [
+    "src/**/*",
+    "examples/**/*",
+    "tests/**/*",
+    "benches/**/*",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE",
+]
 
 [dependencies]
 # HTTP client

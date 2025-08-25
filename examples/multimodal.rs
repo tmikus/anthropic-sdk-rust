@@ -10,9 +10,7 @@
 //! Run with: cargo run --example multimodal
 
 use anthropic::{
-    Client, Model, ContentBlock, ImageMediaType, ImageSource,
-    types::{MessageParam, Role},
-    Error, Result,
+    Client, Model, ContentBlock, ImageMediaType,
 };
 
 #[tokio::main]
@@ -139,7 +137,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 #[allow(dead_code)]
 fn load_image_as_base64(file_path: &str) -> std::result::Result<String, Box<dyn std::error::Error>> {
     let image_bytes = std::fs::read(file_path)?;
-    Ok(base64::encode(&image_bytes))
+    use base64::{Engine as _, engine::general_purpose};
+    Ok(general_purpose::STANDARD.encode(&image_bytes))
 }
 
 /// Helper function to determine image media type from file extension
@@ -158,5 +157,6 @@ fn get_media_type_from_extension(file_path: &str) -> ImageMediaType {
 /// Helper function to validate image data
 #[allow(dead_code)]
 fn validate_image_data(base64_data: &str) -> bool {
-    base64::decode(base64_data).is_ok()
+    use base64::{Engine as _, engine::general_purpose};
+    general_purpose::STANDARD.decode(base64_data).is_ok()
 }

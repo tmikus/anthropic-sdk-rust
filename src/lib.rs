@@ -54,9 +54,12 @@ pub use error::Error;
 pub use streaming::{MessageStream, MessageAccumulator, StreamEvent, ContentDelta, MessageDelta, PartialMessage};
 pub use tools::{Tool, ToolBuilder};
 pub use types::{
-    ChatRequest, ChatRequestBuilder, ContentBlock, ImageMediaType, ImageSource, Message,
-    MessageParam, Model, Role, StopReason, Usage,
+    ChatRequest, ChatRequestBuilder, ContentBlock, ImageMediaType, ImageSource, DocumentSource, DocumentMediaType,
+    Message, MessageParam, Model, Role, StopReason, Usage, SystemMessage, CountTokensRequest, TokenCount,
 };
+
+// Re-export multimodal utilities for convenience
+pub use multimodal::{ImageUtils, DocumentUtils, Base64Utils, MimeUtils, validate_url};
 
 /// Result type alias for the SDK
 pub type Result<T> = std::result::Result<T, Error>;
