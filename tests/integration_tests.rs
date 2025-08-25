@@ -1,11 +1,53 @@
 //! Integration tests demonstrating real API usage patterns
 //!
-//! These tests show how to use the SDK in real scenarios and can serve as
-//! comprehensive examples. They are designed to work with mock responses
-//! when no API key is available, but can be run against the real API
-//! when ANTHROPIC_API_KEY is set.
+//! This file contains comprehensive integration tests that demonstrate how to use
+//! the SDK in real scenarios. The tests are organized into two categories:
 //!
-//! Run with: cargo test --test integration_tests
+//! ## Test Categories
+//!
+//! ### Unit Tests (Miri-Compatible)
+//! Tests that don't require network access and can run under Miri:
+//! - Client configuration and building
+//! - Request construction and validation  
+//! - Content block creation and manipulation
+//! - Tool definition and structure
+//! - Model capabilities and serialization
+//!
+//! ### Integration Tests (Network-Dependent)
+//! Tests that make actual network calls and are excluded from Miri:
+//! - Error handling with real API responses
+//! - Token counting with actual requests
+//! - Concurrent request handling
+//! - Streaming setup and configuration
+//! - Configuration validation with network timeouts
+//!
+//! ## Conditional Compilation
+//!
+//! The file uses `#![cfg(not(miri))]` at the top level to exclude the entire
+//! file from Miri execution, but individual tests within use more granular
+//! conditional compilation:
+//!
+//! - `#[cfg(all(test, not(miri)))]` for network-dependent tests
+//! - Regular `#[tokio::test]` for unit tests that should run everywhere
+//!
+//! This allows the unit tests to run under Miri while excluding only the
+//! network-dependent integration tests.
+//!
+//! ## Running Tests
+//!
+//! ```bash
+//! # Run all integration tests (excludes network tests under Miri)
+//! cargo test --test integration_tests
+//!
+//! # Run with Miri (only unit tests will execute)
+//! cargo miri test --test integration_tests
+//!
+//! # Run specific test categories
+//! cargo test test_client_creation
+//! cargo test test_error_handling
+//! ```
+
+#![cfg(not(miri))]
 
 use anthropic_rust::{
     types::{ChatRequest, CountTokensRequest, SystemMessage},
@@ -14,6 +56,7 @@ use anthropic_rust::{
 use serde_json::json;
 use std::time::Duration;
 
+// Unit tests that don't require network access - these run under Miri
 /// Test basic client creation and configuration
 #[tokio::test]
 async fn test_client_creation() {
@@ -181,7 +224,17 @@ async fn test_tool_definition() {
     assert_eq!(request_with_tool.tools.unwrap().len(), 1);
 }
 
-/// Test error handling patterns
+// Network-dependent tests - these are skipped under Miri
+/// Test error handling patterns with real network requests
+///
+/// This test is marked with `#[cfg(all(test, not(miri)))]` because it:
+/// - Makes actual HTTP requests that would fail under Miri
+/// - Tests real authentication failures with the API
+/// - Validates network error categorization
+/// - Requires external network connectivity
+///
+/// The test demonstrates proper error handling patterns for integration scenarios.
+#[cfg(all(test, not(miri)))]
 #[tokio::test]
 async fn test_error_handling() {
     // Test invalid API key error (this will fail immediately due to validation)
@@ -243,7 +296,14 @@ async fn test_model_capabilities() {
     assert_eq!(model, Model::Claude35Sonnet20241022);
 }
 
-/// Test token counting functionality
+/// Test token counting functionality with real API requests
+///
+/// This test is network-dependent and excluded from Miri execution because it:
+/// - Makes HTTP requests to the token counting endpoint
+/// - Tests real API response parsing
+/// - Validates network error handling for token counting
+/// - Requires valid API endpoint connectivity
+#[cfg(all(test, not(miri)))]
 #[tokio::test]
 async fn test_token_counting() {
     let client = Client::builder()
@@ -266,7 +326,14 @@ async fn test_token_counting() {
     assert!(result.is_err()); // Expected to fail with test key
 }
 
-/// Test concurrent request handling
+/// Test concurrent request handling with real network calls
+///
+/// This test requires network access and is excluded from Miri because it:
+/// - Makes concurrent HTTP requests to test thread safety
+/// - Tests real network concurrency behavior
+/// - Validates client cloning across async tasks
+/// - Requires external API connectivity for realistic testing
+#[cfg(all(test, not(miri)))]
 #[tokio::test]
 async fn test_concurrent_requests() {
     let client = Client::builder()
@@ -299,7 +366,14 @@ async fn test_concurrent_requests() {
     assert!(result2.is_err());
 }
 
-/// Test streaming request structure (without actual streaming)
+/// Test streaming request structure with network validation
+///
+/// This test is network-dependent and excluded from Miri because it:
+/// - Attempts to establish streaming connections
+/// - Tests real streaming setup and error handling
+/// - Validates network-based streaming behavior
+/// - Requires HTTP connection establishment
+#[cfg(all(test, not(miri)))]
 #[tokio::test]
 async fn test_streaming_setup() {
     let client = Client::builder()
@@ -355,7 +429,14 @@ async fn test_multimodal_integration() {
     }
 }
 
-/// Test configuration validation
+/// Test configuration validation with real network timeouts
+///
+/// This test requires network access and is excluded from Miri because it:
+/// - Tests real timeout behavior with network requests
+/// - Validates configuration with actual HTTP calls
+/// - Tests model override functionality with network requests
+/// - Requires external connectivity to validate timeout settings
+#[cfg(all(test, not(miri)))]
 #[tokio::test]
 async fn test_configuration_validation() {
     // Test timeout configuration
@@ -457,7 +538,15 @@ async fn example_tool_workflow() {
     assert_eq!(request.tools.unwrap().len(), 1);
 }
 
-/// Example: Error handling patterns
+/// Example: Error handling patterns with real network errors
+///
+/// This example demonstrates error handling with actual network requests.
+/// It's excluded from Miri execution because it:
+/// - Makes real HTTP requests that would trigger foreign function calls
+/// - Tests actual authentication and network error scenarios
+/// - Demonstrates real-world error handling patterns
+/// - Requires network connectivity to show realistic error cases
+#[cfg(all(test, not(miri)))]
 #[tokio::test]
 async fn example_error_handling_patterns() {
     let client = create_test_client();

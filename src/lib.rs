@@ -30,6 +30,10 @@ pub mod streaming;
 pub mod tools;
 pub mod types;
 
+// Mock infrastructure for unit tests
+#[cfg(test)]
+pub mod mock;
+
 // Test modules
 #[cfg(test)]
 mod config_test;

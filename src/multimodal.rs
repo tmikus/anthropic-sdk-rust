@@ -574,8 +574,8 @@ mod tests {
         assert!(DocumentUtils::validate_document_format(&[], &DocumentMediaType::Pdf).is_err());
     }
 
-    #[tokio::test]
-    async fn test_image_from_bytes() {
+    #[test]
+    fn test_image_from_bytes() {
         // Create valid JPEG data
         let jpeg_data = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10]; // Minimal JPEG header
         let content_block = ImageUtils::from_bytes(&jpeg_data, ImageMediaType::Jpeg).unwrap();
@@ -591,8 +591,8 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn test_document_from_bytes() {
+    #[test]
+    fn test_document_from_bytes() {
         // Create valid PDF data
         let pdf_data = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj";
         let content_block = DocumentUtils::from_bytes(pdf_data, DocumentMediaType::Pdf).unwrap();
@@ -689,6 +689,7 @@ mod tests {
         assert!(DocumentUtils::from_bytes(&large_doc_data, DocumentMediaType::Pdf).is_err());
     }
 
+    #[cfg(not(miri))]
     #[tokio::test]
     async fn test_file_operations() {
         use std::io::Write;
@@ -739,6 +740,7 @@ mod tests {
         let _ = std::fs::remove_file(&doc_path);
     }
 
+    #[cfg(not(miri))]
     #[tokio::test]
     async fn test_file_error_conditions() {
         // Test non-existent file

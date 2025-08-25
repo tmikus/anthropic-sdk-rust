@@ -138,6 +138,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(miri))]
     #[tokio::test]
     async fn test_message_accumulator_basic_flow() {
         // Create a stream of events that represents a complete message
@@ -210,6 +211,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(miri))]
     #[tokio::test]
     async fn test_message_accumulator_multiple_content_blocks() {
         let events = vec![
@@ -287,6 +289,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(miri))]
     #[tokio::test]
     async fn test_message_accumulator_error_handling() {
         let events = vec![
@@ -322,6 +325,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(miri))]
     #[tokio::test]
     async fn test_message_accumulator_incomplete_stream() {
         // Stream that ends without MessageStop
@@ -428,6 +432,7 @@ mod tests {
         assert_eq!(parsed.usage.unwrap().input_tokens, 25);
     }
 
+    #[cfg(not(miri))]
     #[tokio::test]
     async fn test_message_stream_as_stream() {
         let events = vec![

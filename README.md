@@ -272,7 +272,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ## Error Handling
 
-The SDK provides comprehensive error handling with detailed error types:
+The SDK provides comprehensive error handling with detailed error types and user-friendly messages:
 
 ```rust
 use anthropic_rust::{Client, Model, Error};
@@ -289,21 +289,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(Error::Authentication(msg)) => {
             eprintln!("Authentication failed: {}", msg);
+            // This is a configuration error - check your API key
         }
-        Err(Error::RateLimit { retry_after }) => {
+        Err(Error::RateLimit { retry_after, .. }) => {
             eprintln!("Rate limited. Retry after: {:?}", retry_after);
+            // This is an integration test error - reduce request frequency
         }
         Err(Error::Network(err)) => {
             eprintln!("Network error: {}", err);
+            // This is an integration test error - check connectivity
         }
         Err(err) => {
-            eprintln!("Other error: {}", err);
+            // Get user-friendly error message with context
+            eprintln!("Error: {}", err.user_message());
+            
+            // Get debugging information for development
+            if cfg!(debug_assertions) {
+                eprintln!("{}", err.debug_info());
+            }
         }
     }
     
     Ok(())
 }
 ```
+
+### Error Categories
+
+Errors are categorized to help with debugging and error handling:
+
+- **Unit Test Errors**: Configuration, serialization, and logic errors
+- **Integration Test Errors**: Network, timeout, and API server errors  
+- **Authentication Errors**: Invalid API keys or permissions
+- **Rate Limit Errors**: Too many requests, includes retry timing
+- **Retryable Errors**: Temporary failures that can be retried
 
 ## Model Selection
 
@@ -332,9 +351,43 @@ let complex_response = client.execute_chat_with_model(
 ).await?;
 ```
 
+## Testing
+
+The SDK uses a comprehensive testing strategy with both unit tests and integration tests:
+
+### Running Tests
+
+```bash
+# Run all tests
+cargo test
+
+# Run only unit tests (Miri-compatible)
+cargo test --lib
+
+# Run integration tests (network-dependent)
+cargo test --test integration_tests
+
+# Run memory safety tests with Miri
+cargo miri test --lib
+```
+
+### Test Categories
+
+- **Unit Tests**: Fast, deterministic tests using mocks (Miri-compatible)
+- **Integration Tests**: Real network tests for end-to-end validation
+- **Memory Safety Tests**: Miri-based tests for memory safety validation
+
+See [TESTING.md](TESTING.md) for detailed testing guidelines and patterns.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+When contributing:
+- Add unit tests for new functionality (must be Miri-compatible)
+- Add integration tests for network-dependent features
+- Follow the conditional compilation patterns for test isolation
+- Ensure all tests pass including Miri memory safety checks
 
 ## License
 

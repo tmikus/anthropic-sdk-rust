@@ -1,4 +1,42 @@
-//! Integration tests with mock HTTP responses using wiremock
+//! Mock-based integration tests using wiremock
+//!
+//! This file contains integration tests that use mock HTTP servers instead of
+//! real network calls. These tests provide a middle ground between pure unit
+//! tests and full integration tests.
+//!
+//! ## Purpose
+//!
+//! These tests are designed to:
+//! - Test HTTP client behavior without external dependencies
+//! - Validate request/response serialization over HTTP
+//! - Test error handling with controlled HTTP responses
+//! - Provide deterministic integration testing
+//!
+//! ## Miri Compatibility
+//!
+//! While these tests use `#![cfg(not(miri))]` to exclude them from Miri execution,
+//! they could potentially be made Miri-compatible by using a pure Rust HTTP mock
+//! implementation instead of wiremock (which may use foreign functions).
+//!
+//! ## Test Categories
+//!
+//! - HTTP request/response validation
+//! - Error response handling
+//! - Authentication flow testing
+//! - Rate limiting simulation
+//! - Timeout behavior testing
+//!
+//! ## Usage
+//!
+//! ```bash
+//! # Run mock integration tests
+//! cargo test --test mock_integration_tests
+//!
+//! # These tests are excluded from Miri
+//! cargo miri test --test mock_integration_tests  # Will skip all tests
+//! ```
+
+#![cfg(not(miri))]
 
 use anthropic_rust::{
     types::CountTokensRequest, Client, ContentBlock, Error, MessageParam, Model, Role, StopReason,

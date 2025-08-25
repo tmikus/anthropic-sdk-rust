@@ -1,6 +1,6 @@
 //! Property-based tests for serialization/deserialization
 
-#[cfg(test)]
+#[cfg(all(test, not(miri)))]
 mod tests {
     use crate::types::*;
     use crate::Tool;

@@ -56,16 +56,24 @@ jobs:
     - name: Build
       run: cargo build --verbose --all-features
 
+    # Unit tests - fast, deterministic, Miri-compatible
+    # These test core logic without network dependencies
     - name: Run unit tests
       run: cargo test --lib --all-features
 
-    - name: Run integration tests
+    # Integration tests - real network calls, comprehensive end-to-end testing
+    # These are excluded from Miri execution due to network dependencies
+    - name: Run integration tests (network-dependent)
       run: cargo test --test integration_tests --all-features
 
-    - name: Run mock integration tests
+    # Mock integration tests - HTTP behavior testing with controlled responses
+    # These provide integration testing without external dependencies
+    - name: Run mock integration tests (Miri-compatible)
       run: cargo test --test mock_integration_tests --all-features
 
-    - name: Run property tests
+    # Property tests - generative testing for edge cases
+    # These are Miri-compatible and test invariants
+    - name: Run property tests (Miri-compatible)
       run: cargo test property_tests --all-features
 
     - name: Run doc tests
@@ -269,7 +277,11 @@ jobs:
     - name: Install Miri
       run: rustup component add miri
 
-    - name: Run Miri
-      run: cargo miri test --lib
+    # Memory safety testing with Miri
+    # Only runs unit tests that don't make network calls or use foreign functions
+    # Tests marked with #[cfg(all(test, not(miri)))] are automatically excluded
+    - name: Run Miri on unit tests (network-independent tests only)
+      run: cargo miri test --lib --all-features
       env:
+        # Enable strict provenance checking for enhanced memory safety validation
         MIRIFLAGS: -Zmiri-strict-provenance

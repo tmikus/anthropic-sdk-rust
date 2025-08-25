@@ -254,6 +254,205 @@ impl Error {
             _ => None,
         }
     }
+
+    /// Get a user-friendly error message with context about test execution
+    pub fn user_message(&self) -> String {
+        match self {
+            Error::Http(e) if e.is_connect() => {
+                format!(
+                    "Network connection failed: {}. This is an integration test error - check network connectivity.",
+                    e
+                )
+            }
+            Error::Http(e) if e.is_timeout() => {
+                format!(
+                    "Request timed out: {}. This is an integration test error - consider increasing timeout or checking network conditions.",
+                    e
+                )
+            }
+            Error::Http(e) => {
+                format!(
+                    "HTTP request failed: {}. This is an integration test error - check network conditions and API endpoint availability.",
+                    e
+                )
+            }
+            Error::Network(msg) => {
+                format!(
+                    "Network error: {}. This is an integration test error - verify network connectivity and endpoint availability.",
+                    msg
+                )
+            }
+            Error::Timeout {
+                timeout,
+                request_id,
+            } => {
+                let id_info = request_id
+                    .as_ref()
+                    .map(|id| format!(" (Request ID: {})", id))
+                    .unwrap_or_default();
+                format!(
+                    "Request timed out after {:?}{}. This is an integration test error - consider increasing timeout configuration.",
+                    timeout, id_info
+                )
+            }
+            Error::Api {
+                status,
+                message,
+                error_type,
+                request_id,
+            } => {
+                let id_info = request_id
+                    .as_ref()
+                    .map(|id| format!(" (Request ID: {})", id))
+                    .unwrap_or_default();
+                let type_info = error_type
+                    .as_ref()
+                    .map(|t| format!(" [{}]", t))
+                    .unwrap_or_default();
+
+                if status.is_client_error() {
+                    format!(
+                        "API client error {}: {}{}{} - This indicates a problem with the request configuration or parameters.",
+                        status, message, type_info, id_info
+                    )
+                } else if status.is_server_error() {
+                    format!(
+                        "API server error {}: {}{}{} - This is an integration test error indicating a server-side issue. The request may be retried.",
+                        status, message, type_info, id_info
+                    )
+                } else {
+                    format!(
+                        "API error {}: {}{}{} - This is an integration test error.",
+                        status, message, type_info, id_info
+                    )
+                }
+            }
+            Error::Authentication(msg) => {
+                format!(
+                    "Authentication failed: {}. This is a configuration error - verify your API key is valid and properly set.",
+                    msg
+                )
+            }
+            Error::RateLimit {
+                retry_after,
+                request_id,
+            } => {
+                let id_info = request_id
+                    .as_ref()
+                    .map(|id| format!(" (Request ID: {})", id))
+                    .unwrap_or_default();
+                let retry_info = retry_after
+                    .map(|duration| format!(" Retry after {:?}.", duration))
+                    .unwrap_or_else(|| " Retry with exponential backoff.".to_string());
+                format!(
+                    "Rate limit exceeded{}.{} This is an integration test error - reduce request frequency or implement retry logic.",
+                    id_info, retry_info
+                )
+            }
+            Error::Serialization(e) => {
+                format!(
+                    "Data serialization error: {}. This is a unit test error - check request/response data structures and JSON formatting.",
+                    e
+                )
+            }
+            Error::Config(msg) => {
+                format!(
+                    "Configuration error: {}. This is a unit test error - verify client configuration parameters.",
+                    msg
+                )
+            }
+            Error::Stream(msg) => {
+                format!(
+                    "Stream processing error: {}. This could be either a unit test error (mock stream issues) or integration test error (network stream issues).",
+                    msg
+                )
+            }
+            Error::Url(e) => {
+                format!(
+                    "URL parsing error: {}. This is a unit test error - check URL construction and base URL configuration.",
+                    e
+                )
+            }
+            Error::InvalidRequest(msg) => {
+                format!(
+                    "Invalid request: {}. This is a unit test error - verify request parameters and structure.",
+                    msg
+                )
+            }
+            Error::InvalidResponse(msg) => {
+                format!(
+                    "Invalid response format: {}. This could be a unit test error (mock response format) or integration test error (unexpected API response).",
+                    msg
+                )
+            }
+            Error::Model(msg) => {
+                format!(
+                    "Model error: {}. This is a unit test error - verify model configuration and availability.",
+                    msg
+                )
+            }
+            Error::Tool(msg) => {
+                format!(
+                    "Tool error: {}. This is a unit test error - check tool definition and usage patterns.",
+                    msg
+                )
+            }
+            Error::Content(msg) => {
+                format!(
+                    "Content processing error: {}. This is a unit test error - verify content format and encoding.",
+                    msg
+                )
+            }
+        }
+    }
+
+    /// Get debugging information for test failures
+    pub fn debug_info(&self) -> String {
+        let category = match self.category() {
+            ErrorCategory::Network => "Network",
+            ErrorCategory::Auth => "Authentication",
+            ErrorCategory::RateLimit => "Rate Limiting",
+            ErrorCategory::Config => "Configuration",
+            ErrorCategory::Request => "Request Validation",
+            ErrorCategory::Server => "Server",
+            ErrorCategory::Processing => "Data Processing",
+            ErrorCategory::Stream => "Stream Processing",
+        };
+
+        let test_type = if self.is_network_error()
+            || matches!(self, Error::Api { status, .. } if status.is_server_error())
+        {
+            "Integration Test"
+        } else {
+            "Unit Test"
+        };
+
+        let retryable = if self.is_retryable() { "Yes" } else { "No" };
+
+        let error_details = match self {
+            Error::Http(e) => {
+                if e.is_timeout() {
+                    "HTTP timeout error".to_string()
+                } else if e.is_connect() {
+                    "HTTP connection error".to_string()
+                } else if e.is_request() {
+                    "HTTP request error".to_string()
+                } else {
+                    format!("HTTP error: {}", e)
+                }
+            }
+            _ => format!("{}", self),
+        };
+
+        format!(
+            "Error Debug Info:\n  Category: {}\n  Test Type: {}\n  Retryable: {}\n  Request ID: {}\n  Error: {}",
+            category,
+            test_type,
+            retryable,
+            self.request_id().unwrap_or("None"),
+            error_details
+        )
+    }
 }
 
 /// Result type alias for the Anthropic SDK
@@ -539,5 +738,160 @@ mod tests {
 
         assert!(returns_result().is_ok());
         assert!(returns_error().is_err());
+    }
+
+    #[test]
+    fn test_user_message_formatting() {
+        // Test network error message
+        let network_error = Error::Network("Connection refused".to_string());
+        let message = network_error.user_message();
+        assert!(message.contains("Network error"));
+        assert!(message.contains("integration test error"));
+        assert!(message.contains("network connectivity"));
+
+        // Test authentication error message
+        let auth_error = Error::Authentication("Invalid API key".to_string());
+        let message = auth_error.user_message();
+        assert!(message.contains("Authentication failed"));
+        assert!(message.contains("configuration error"));
+        assert!(message.contains("API key"));
+
+        // Test API server error message
+        let server_error = Error::api(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Server error",
+            Some("server_error".to_string()),
+            Some("req_123".to_string()),
+        );
+        let message = server_error.user_message();
+        assert!(message.contains("API server error 500"));
+        assert!(message.contains("integration test error"));
+        assert!(message.contains("server-side issue"));
+        assert!(message.contains("req_123"));
+
+        // Test API client error message
+        let client_error = Error::api(StatusCode::BAD_REQUEST, "Invalid request", None, None);
+        let message = client_error.user_message();
+        assert!(message.contains("API client error 400"));
+        assert!(message.contains("request configuration"));
+
+        // Test serialization error message
+        let serde_error = serde_json::from_str::<serde_json::Value>("invalid").unwrap_err();
+        let serialization_error = Error::Serialization(serde_error);
+        let message = serialization_error.user_message();
+        assert!(message.contains("Data serialization error"));
+        assert!(message.contains("unit test error"));
+
+        // Test rate limit error message
+        let rate_limit =
+            Error::rate_limit(Some(Duration::from_secs(60)), Some("req_456".to_string()));
+        let message = rate_limit.user_message();
+        assert!(message.contains("Rate limit exceeded"));
+        assert!(message.contains("req_456"));
+        assert!(message.contains("Retry after 60s"));
+        assert!(message.contains("integration test error"));
+
+        // Test timeout error message
+        let timeout = Error::timeout(Duration::from_secs(30), Some("req_789".to_string()));
+        let message = timeout.user_message();
+        assert!(message.contains("Request timed out after 30s"));
+        assert!(message.contains("req_789"));
+        assert!(message.contains("integration test error"));
+    }
+
+    #[test]
+    fn test_debug_info_formatting() {
+        // Test network error debug info
+        let network_error = Error::Network("Connection failed".to_string());
+        let debug_info = network_error.debug_info();
+        assert!(debug_info.contains("Category: Network"));
+        assert!(debug_info.contains("Test Type: Integration Test"));
+        assert!(debug_info.contains("Retryable: Yes"));
+        assert!(debug_info.contains("Request ID: None"));
+
+        // Test authentication error debug info
+        let auth_error = Error::Authentication("Invalid key".to_string());
+        let debug_info = auth_error.debug_info();
+        assert!(debug_info.contains("Category: Authentication"));
+        assert!(debug_info.contains("Test Type: Unit Test"));
+        assert!(debug_info.contains("Retryable: No"));
+
+        // Test API error with request ID debug info
+        let api_error = Error::api(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Server error",
+            None,
+            Some("req_123".to_string()),
+        );
+        let debug_info = api_error.debug_info();
+        assert!(debug_info.contains("Category: Server"));
+        assert!(debug_info.contains("Test Type: Integration Test"));
+        assert!(debug_info.contains("Retryable: Yes"));
+        assert!(debug_info.contains("Request ID: req_123"));
+
+        // Test configuration error debug info
+        let config_error = Error::Config("Invalid timeout".to_string());
+        let debug_info = config_error.debug_info();
+        assert!(debug_info.contains("Category: Configuration"));
+        assert!(debug_info.contains("Test Type: Unit Test"));
+        assert!(debug_info.contains("Retryable: No"));
+    }
+
+    #[test]
+    fn test_user_message_http_error_variants() {
+        // Create a mock reqwest error for connection failure
+        // Note: We can't easily create reqwest::Error in tests, so we test the logic paths
+
+        // Test timeout error with HTTP wrapper
+        let timeout_error = Error::Timeout {
+            timeout: Duration::from_secs(10),
+            request_id: Some("req_timeout".to_string()),
+        };
+        let message = timeout_error.user_message();
+        assert!(message.contains("Request timed out after 10s"));
+        assert!(message.contains("req_timeout"));
+        assert!(message.contains("integration test error"));
+
+        // Test stream error message (ambiguous test type)
+        let stream_error = Error::Stream("Stream disconnected".to_string());
+        let message = stream_error.user_message();
+        assert!(message.contains("Stream processing error"));
+        assert!(message.contains("unit test error") || message.contains("integration test error"));
+    }
+
+    #[test]
+    fn test_error_message_consistency() {
+        // Verify that all error types have user messages
+        let errors = vec![
+            Error::Network("test".to_string()),
+            Error::Authentication("test".to_string()),
+            Error::Config("test".to_string()),
+            Error::InvalidRequest("test".to_string()),
+            Error::InvalidResponse("test".to_string()),
+            Error::Model("test".to_string()),
+            Error::Tool("test".to_string()),
+            Error::Content("test".to_string()),
+            Error::Stream("test".to_string()),
+            Error::api(StatusCode::BAD_REQUEST, "test", None, None),
+            Error::rate_limit(None, None),
+            Error::timeout(Duration::from_secs(1), None),
+            // Note: We can't easily create reqwest::Error in tests, so we skip Http variant
+            // The Http error is tested through integration tests
+        ];
+
+        for error in errors {
+            let user_message = error.user_message();
+            let debug_info = error.debug_info();
+
+            // All messages should be non-empty and contain useful information
+            assert!(!user_message.is_empty());
+            assert!(!debug_info.is_empty());
+
+            // Debug info should contain standard fields
+            assert!(debug_info.contains("Category:"));
+            assert!(debug_info.contains("Test Type:"));
+            assert!(debug_info.contains("Retryable:"));
+            assert!(debug_info.contains("Request ID:"));
+        }
     }
 }
