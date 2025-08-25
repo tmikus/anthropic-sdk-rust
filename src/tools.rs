@@ -1,4 +1,6 @@
 //! Tool calling functionality for the Anthropic API
+//!
+//! This module uses the `serde_json::json!` macro which requires serde_json >= 1.0.39.
 
 use serde::{Deserialize, Serialize};
 
