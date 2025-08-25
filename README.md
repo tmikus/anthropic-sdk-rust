@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-anthropic_rust = "0.1.0"
+anthropic_rust = "0.1.1"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
