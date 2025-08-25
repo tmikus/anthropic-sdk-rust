@@ -9,7 +9,7 @@
 //! Note: This example requires a valid ANTHROPIC_API_KEY environment variable.
 //! For testing purposes, you can set it to a dummy value to see the request structure.
 
-use anthropic::{
+use anthropic_rust::{
     Client, Model,
     types::{ContentBlock, ChatRequest, MessageParam, Role},
     Error,
@@ -95,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 content: vec![ContentBlock::text("What's the capital of France?")],
             },
         ],
-        system: Some(vec![anthropic::types::SystemMessage {
+        system: Some(vec![anthropic_rust::types::SystemMessage {
             message_type: "text".to_string(),
             text: "Be concise and direct in your responses.".to_string(),
         }]),

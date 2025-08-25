@@ -1,6 +1,6 @@
 //! Performance benchmarks for critical code paths
 
-use anthropic::{
+use anthropic_rust::{
     Client, Model, ContentBlock, Role, MessageParam, Tool,
     types::{ChatRequest, SystemMessage, Usage, Message, StopReason},
 };
@@ -33,7 +33,7 @@ fn create_complex_message() -> Message {
         content: vec![
             ContentBlock::text("This is a complex message with multiple content blocks."),
             ContentBlock::image_base64(
-                anthropic::ImageMediaType::Png,
+                anthropic_rust::ImageMediaType::Png,
                 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==".to_string()
             ),
             ContentBlock::tool_use(
@@ -224,7 +224,7 @@ fn bench_content_block_creation(c: &mut Criterion) {
     group.bench_function("image_base64_block", |b| {
         b.iter(|| {
             let block = ContentBlock::image_base64(
-                black_box(anthropic::ImageMediaType::Png),
+                black_box(anthropic_rust::ImageMediaType::Png),
                 black_box("base64encodeddata".to_string())
             );
             black_box(block);
@@ -378,7 +378,7 @@ fn bench_error_handling(c: &mut Criterion) {
     
     group.bench_function("error_creation", |b| {
         b.iter(|| {
-            let error = anthropic::Error::Api {
+            let error = anthropic_rust::Error::Api {
                 status: black_box(reqwest::StatusCode::BAD_REQUEST),
                 message: black_box("Test error".to_string()),
                 error_type: black_box(Some("test_error".to_string())),
@@ -389,7 +389,7 @@ fn bench_error_handling(c: &mut Criterion) {
     });
     
     group.bench_function("error_categorization", |b| {
-        let error = anthropic::Error::Api {
+        let error = anthropic_rust::Error::Api {
             status: reqwest::StatusCode::INTERNAL_SERVER_ERROR,
             message: "Server error".to_string(),
             error_type: None,
@@ -476,7 +476,7 @@ fn bench_memory_usage(c: &mut Criterion) {
 
 // Benchmark streaming-related operations
 fn bench_streaming_operations(c: &mut Criterion) {
-    use anthropic::streaming::{StreamEvent, ContentDelta, MessageDelta, PartialMessage};
+    use anthropic_rust::streaming::{StreamEvent, ContentDelta, MessageDelta, PartialMessage};
     
     let mut group = c.benchmark_group("streaming_operations");
     

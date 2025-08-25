@@ -1,6 +1,6 @@
 //! Integration tests with mock HTTP responses using wiremock
 
-use anthropic::{
+use anthropic_rust::{
     Client, Model, ContentBlock, Role, MessageParam, Tool, StopReason,
     types::{CountTokensRequest},
     Error,
@@ -190,7 +190,7 @@ async fn test_multimodal_request() {
     let request = client.chat_builder()
         .user_message(ContentBlock::text("What do you see in this image?"))
         .user_message(ContentBlock::image_base64(
-            anthropic::ImageMediaType::Png,
+            anthropic_rust::ImageMediaType::Png,
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==".to_string()
         ))
         .build();

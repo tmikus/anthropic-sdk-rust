@@ -6,8 +6,8 @@
 //! - Ensuring messages fit within model token limits
 //! - Optimizing prompt length for better performance
 
-use anthropic::{Client, Model, Result};
-use anthropic::types::{ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage};
+use anthropic_rust::{Client, Model, Result};
+use anthropic_rust::types::{ContentBlock, CountTokensRequest, MessageParam, Role, SystemMessage};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
             content: vec![
                 ContentBlock::text("What do you see in this image?"),
                 ContentBlock::image_base64(
-                    anthropic::types::ImageMediaType::Png,
+                    anthropic_rust::types::ImageMediaType::Png,
                     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
                 ),
             ],
@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
     println!("\n=== Example 4: Message with Tools ===");
     
     // Create a simple calculator tool
-    let calculator_tool = anthropic::tools::Tool::new("calculator")
+    let calculator_tool = anthropic_rust::tools::Tool::new("calculator")
         .description("A simple calculator that can perform basic arithmetic operations")
         .schema_value(serde_json::json!({
             "type": "object",

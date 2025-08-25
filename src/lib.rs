@@ -5,7 +5,7 @@
 //! ## Quick Start
 //!
 //! ```rust,no_run
-//! use anthropic::{Client, Model, ContentBlock};
+//! use anthropic_rust::{Client, Model, ContentBlock};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {

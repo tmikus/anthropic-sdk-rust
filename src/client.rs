@@ -32,7 +32,7 @@ use crate::{
 /// ## Basic Usage
 ///
 /// ```rust,no_run
-/// use anthropic::{Client, Model, ContentBlock};
+/// use anthropic_rust::{Client, Model, ContentBlock};
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -54,7 +54,7 @@ use crate::{
 /// ## Advanced Configuration
 ///
 /// ```rust,no_run
-/// use anthropic::{Client, Model};
+/// use anthropic_rust::{Client, Model};
 /// use std::time::Duration;
 ///
 /// #[tokio::main]
@@ -74,7 +74,7 @@ use crate::{
 /// ## Streaming Responses
 ///
 /// ```rust,no_run
-/// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+/// use anthropic_rust::{Client, Model, ContentBlock, StreamEvent};
 /// use futures::StreamExt;
 ///
 /// #[tokio::main]
@@ -756,7 +756,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model};
+    /// use anthropic_rust::{Client, Model};
     /// use std::time::Duration;
     ///
     /// #[tokio::main]
@@ -795,7 +795,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model};
+    /// use anthropic_rust::{Client, Model};
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -841,7 +841,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock};
+    /// use anthropic_rust::{Client, Model, ContentBlock};
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -879,7 +879,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock};
+    /// use anthropic_rust::{Client, Model, ContentBlock};
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -922,7 +922,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock};
+    /// use anthropic_rust::{Client, Model, ContentBlock};
     /// use std::time::Duration;
     ///
     /// #[tokio::main]
@@ -975,7 +975,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock};
+    /// use anthropic_rust::{Client, Model, ContentBlock};
     /// use std::time::Duration;
     ///
     /// #[tokio::main]
@@ -1021,7 +1021,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+    /// use anthropic_rust::{Client, Model, ContentBlock, StreamEvent};
     /// use futures::StreamExt;
     ///
     /// #[tokio::main]
@@ -1037,7 +1037,7 @@ impl Client {
     ///     while let Some(event) = stream.next().await {
     ///         match event? {
     ///             StreamEvent::ContentBlockDelta { delta, .. } => {
-    ///                 if let anthropic::ContentDelta::TextDelta { text } = delta {
+    ///                 if let anthropic_rust::ContentDelta::TextDelta { text } = delta {
     ///                     print!("{}", text); // Print text as it streams
     ///                 }
     ///             }
@@ -1066,7 +1066,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+    /// use anthropic_rust::{Client, Model, ContentBlock, StreamEvent};
     /// use futures::StreamExt;
     ///
     /// #[tokio::main]
@@ -1109,7 +1109,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+    /// use anthropic_rust::{Client, Model, ContentBlock, StreamEvent};
     /// use futures::StreamExt;
     /// use std::time::Duration;
     ///
@@ -1161,7 +1161,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock, StreamEvent};
+    /// use anthropic_rust::{Client, Model, ContentBlock, StreamEvent};
     /// use futures::StreamExt;
     /// use std::time::Duration;
     ///
@@ -1208,7 +1208,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock, types::CountTokensRequest};
+    /// use anthropic_rust::{Client, Model, ContentBlock, types::CountTokensRequest};
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -1216,8 +1216,8 @@ impl Client {
     ///     
     ///     let request = CountTokensRequest {
     ///         messages: vec![
-    ///             anthropic::types::MessageParam {
-    ///                 role: anthropic::Role::User,
+    ///             anthropic_rust::types::MessageParam {
+    ///                 role: anthropic_rust::Role::User,
     ///                 content: vec![ContentBlock::text("How many tokens is this message?")],
     ///             }
     ///         ],
@@ -1254,7 +1254,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model, ContentBlock, Role};
+    /// use anthropic_rust::{Client, Model, ContentBlock, Role};
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -1284,7 +1284,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model};
+    /// use anthropic_rust::{Client, Model};
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -1307,7 +1307,7 @@ impl Client {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// use anthropic::{Client, Model};
+    /// use anthropic_rust::{Client, Model};
     ///
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

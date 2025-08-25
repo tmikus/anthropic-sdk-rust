@@ -31,7 +31,7 @@ tokio = { version = "1.0", features = ["full"] }
 ## Quick Start
 
 ```rust
-use anthropic::{Client, Model, ContentBlock};
+use anthropic_rust::{Client, Model, ContentBlock};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -78,7 +78,7 @@ let client = Client::builder()
 ### Basic Conversation
 
 ```rust
-use anthropic::{Client, Model, ContentBlock, Role, MessageParam};
+use anthropic_rust::{Client, Model, ContentBlock, Role, MessageParam};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -105,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Streaming Responses
 
 ```rust
-use anthropic::{Client, Model, ContentBlock, StreamEvent};
+use anthropic_rust::{Client, Model, ContentBlock, StreamEvent};
 use futures::StreamExt;
 
 #[tokio::main]
@@ -122,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Some(event) = stream.next().await {
         match event? {
             StreamEvent::ContentBlockDelta { delta, .. } => {
-                if let anthropic::ContentDelta::TextDelta { text } = delta {
+                if let anthropic_rust::ContentDelta::TextDelta { text } = delta {
                     print!("{}", text);
                 }
             }
@@ -139,7 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Tool Calling
 
 ```rust
-use anthropic::{Client, Model, ContentBlock, Tool};
+use anthropic_rust::{Client, Model, ContentBlock, Tool};
 use serde_json::json;
 
 #[tokio::main]
@@ -189,7 +189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Multimodal (Images)
 
 ```rust
-use anthropic::{Client, Model, ContentBlock, ImageMediaType};
+use anthropic_rust::{Client, Model, ContentBlock, ImageMediaType};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -220,7 +220,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Advanced Configuration
 
 ```rust
-use anthropic::{Client, Model, RetryConfig};
+use anthropic_rust::{Client, Model, RetryConfig};
 use std::time::Duration;
 
 #[tokio::main]
@@ -246,7 +246,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Token Counting
 
 ```rust
-use anthropic::{Client, Model, ContentBlock, types::{CountTokensRequest, MessageParam, Role}};
+use anthropic_rust::{Client, Model, ContentBlock, types::{CountTokensRequest, MessageParam, Role}};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -275,7 +275,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 The SDK provides comprehensive error handling with detailed error types:
 
 ```rust
-use anthropic::{Client, Model, Error};
+use anthropic_rust::{Client, Model, Error};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

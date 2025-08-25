@@ -7,7 +7,7 @@
 //!
 //! Run with: cargo test --test integration_tests
 
-use anthropic::{
+use anthropic_rust::{
     Client, Model, ContentBlock, Role, MessageParam, Tool,
     types::{ChatRequest, SystemMessage, CountTokensRequest},
     Error,
@@ -99,15 +99,15 @@ async fn test_content_blocks() {
 
     // Test image content (base64)
     let image_content = ContentBlock::image_base64(
-        anthropic::ImageMediaType::Png,
+        anthropic_rust::ImageMediaType::Png,
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==".to_string()
     );
     
     match image_content {
         ContentBlock::Image { source } => {
             match source {
-                anthropic::ImageSource::Base64 { media_type, .. } => {
-                    assert_eq!(media_type, anthropic::ImageMediaType::Png);
+                anthropic_rust::ImageSource::Base64 { media_type, .. } => {
+                    assert_eq!(media_type, anthropic_rust::ImageMediaType::Png);
                 }
                 _ => panic!("Expected base64 image source"),
             }
@@ -327,7 +327,7 @@ async fn test_multimodal_integration() {
     let multimodal_request = client.chat_builder()
         .user_message(ContentBlock::text("Please analyze this image:"))
         .user_message(ContentBlock::image_base64(
-            anthropic::ImageMediaType::Png,
+            anthropic_rust::ImageMediaType::Png,
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==".to_string()
         ))
         .user_message(ContentBlock::text("What do you see?"))

@@ -9,7 +9,7 @@
 //!
 //! Run with: cargo run --example streaming_chat
 
-use anthropic::{Client, Model, ContentBlock, StreamEvent, MessageAccumulator};
+use anthropic_rust::{Client, Model, ContentBlock, StreamEvent, MessageAccumulator};
 use futures::StreamExt;
 use std::io::{self, Write};
 use std::time::Instant;
@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             StreamEvent::ContentBlockDelta { delta, .. } => {
-                                let anthropic::ContentDelta::TextDelta { text } = delta;
+                                let anthropic_rust::ContentDelta::TextDelta { text } = delta;
                                 print!("{}", text);
                                 accumulated_text.push_str(&text);
                                 token_count += text.split_whitespace().count();
@@ -182,7 +182,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 while let Some(event_result) = stream.next().await {
                     match event_result {
                         Ok(StreamEvent::ContentBlockDelta { delta, .. }) => {
-                            let anthropic::ContentDelta::TextDelta { text } = delta;
+                            let anthropic_rust::ContentDelta::TextDelta { text } = delta;
                             print!("{}", text);
                             char_count += text.len();
                             io::stdout().flush()?;
@@ -233,7 +233,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 io::stdout().flush()?;
                             }
                             StreamEvent::ContentBlockDelta { delta, .. } => {
-                                let anthropic::ContentDelta::TextDelta { text } = delta;
+                                let anthropic_rust::ContentDelta::TextDelta { text } = delta;
                                 progress_chars += text.len();
                                 if progress_chars % 50 == 0 {
                                     print!(".");

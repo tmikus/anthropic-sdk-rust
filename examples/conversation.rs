@@ -9,7 +9,7 @@
 //!
 //! Run with: cargo run --example conversation
 
-use anthropic::{
+use anthropic_rust::{
     Client, Model, ContentBlock, Role, MessageParam,
     types::{ChatRequest, SystemMessage},
 };

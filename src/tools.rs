@@ -127,7 +127,7 @@ impl ToolBuilder {
 /// # Examples
 /// 
 /// ```rust
-/// use anthropic::tool;
+/// use anthropic_rust::tool;
 /// 
 /// // Simple tool with just a name
 /// let tool1 = tool!("calculator");
@@ -138,7 +138,7 @@ impl ToolBuilder {
 /// // Tool with schema using schemars (requires schemars feature)
 /// #[cfg(feature = "schemars")]
 /// {
-///     use anthropic::tool_with_schema;
+///     use anthropic_rust::tool_with_schema;
 ///     use serde::{Deserialize, Serialize};
 ///     use schemars::JsonSchema;
 ///     

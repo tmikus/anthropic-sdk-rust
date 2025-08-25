@@ -9,7 +9,7 @@
 //!
 //! Run with: cargo run --example multimodal
 
-use anthropic::{
+use anthropic_rust::{
     Client, Model, ContentBlock, ImageMediaType,
 };
 

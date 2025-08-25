@@ -1,6 +1,6 @@
 //! Example demonstrating the ChatRequest and ChatRequestBuilder functionality
 
-use anthropic::{
+use anthropic_rust::{
     Client, Model,
     types::{ChatRequestBuilder, ContentBlock, Role, MessageParam},
     tools::Tool,
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .message_with_content(Role::User, vec![
             ContentBlock::text("What do you see in this image?"),
             ContentBlock::image_base64(
-                anthropic::types::ImageMediaType::Png,
+                anthropic_rust::types::ImageMediaType::Png,
                 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
             ),
         ])

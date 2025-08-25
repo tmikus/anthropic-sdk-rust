@@ -9,7 +9,7 @@
 //!
 //! Run with: cargo run --example tools
 
-use anthropic::{
+use anthropic_rust::{
     Client, Model, ContentBlock, Tool,
 };
 use serde_json::{json, Value};

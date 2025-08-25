@@ -9,7 +9,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use anthropic::{
+use anthropic_rust::{
     ClientBuilder, ContentBlock, LoggingInterceptor, Model, RequestInterceptor,
     RetryConfig, Result,
 };
@@ -54,7 +54,7 @@ impl RequestInterceptor for MetricsInterceptor {
         Ok(())
     }
 
-    fn on_error(&self, error: &anthropic::Error) {
+    fn on_error(&self, error: &anthropic_rust::Error) {
         let mut count = self.error_count.lock().unwrap();
         *count += 1;
         println!("📊 Error #{}: {}", *count, error);
@@ -72,7 +72,7 @@ async fn main() -> Result<()> {
         .timeout(Duration::from_secs(30))
         .user_agent("anthropic-rust-sdk-example/1.0")
         .build()
-        .map_err(|e| anthropic::Error::Config(format!("Failed to build HTTP client: {}", e)))?;
+        .map_err(|e| anthropic_rust::Error::Config(format!("Failed to build HTTP client: {}", e)))?;
 
     // Example 2: Custom Retry Configuration
     println!("2️⃣ Custom Retry Configuration");

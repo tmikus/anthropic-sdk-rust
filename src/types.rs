@@ -19,7 +19,7 @@ use url::Url;
 /// # Examples
 ///
 /// ```rust
-/// use anthropic::Model;
+/// use anthropic_rust::Model;
 ///
 /// // Get the maximum tokens for a model
 /// let max_tokens = Model::Claude35Sonnet20241022.max_tokens();
@@ -67,7 +67,7 @@ impl Model {
 /// # Examples
 ///
 /// ```rust
-/// use anthropic::{Role, MessageParam, ContentBlock};
+/// use anthropic_rust::{Role, MessageParam, ContentBlock};
 ///
 /// let user_message = MessageParam {
 ///     role: Role::User,
@@ -96,7 +96,7 @@ pub enum Role {
 /// # Examples
 ///
 /// ```rust
-/// use anthropic::StopReason;
+/// use anthropic_rust::StopReason;
 ///
 /// // Check if the response was complete
 /// let stop_reason = StopReason::EndTurn;
@@ -129,7 +129,7 @@ pub enum StopReason {
 /// # Examples
 ///
 /// ```rust
-/// use anthropic::Usage;
+/// use anthropic_rust::Usage;
 ///
 /// let usage = Usage {
 ///     input_tokens: 50,
