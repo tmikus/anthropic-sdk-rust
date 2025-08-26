@@ -13,7 +13,7 @@ use url::Url;
 /// best fits your use case:
 ///
 /// - **Haiku**: Fastest and most cost-effective for simple tasks
-/// - **Sonnet**: Balanced performance for most applications  
+/// - **Sonnet**: Balanced performance for most applications
 /// - **Opus**: Most capable for complex reasoning tasks
 ///
 /// # Examples
@@ -328,6 +328,19 @@ pub struct Message {
     pub stop_reason: Option<StopReason>,
     pub stop_sequence: Option<String>,
     pub usage: Usage,
+}
+
+impl Into<MessageParam> for Message {
+    fn into(self) -> MessageParam {
+        let mut content= vec![];
+        for c in self.content {
+            content.push(c);
+        }
+        MessageParam {
+            content,
+            role: self.role,
+        }
+    }
 }
 
 /// System message
