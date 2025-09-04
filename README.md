@@ -1,6 +1,6 @@
 # Anthropic Rust SDK
 
-[![Crates.io](https://img.shields.io/crates/v/anthropic.svg)](https://crates.io/crates/anthropic_rust)
+[![Crates.io](https://img.shields.io/crates/v/anthropic_rust.svg)](https://crates.io/crates/anthropic_rust)
 [![Documentation](https://docs.rs/anthropic/badge.svg)](https://docs.rs/anthropic_rust)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -24,7 +24,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-anthropic_rust = "0.1.2"
+anthropic_rust = "0.1.3"
 tokio = { version = "1.0", features = ["full"] }
 ```
 
