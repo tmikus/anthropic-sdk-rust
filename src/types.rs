@@ -332,7 +332,7 @@ pub struct Message {
 
 impl Into<MessageParam> for Message {
     fn into(self) -> MessageParam {
-        let mut content= vec![];
+        let mut content = vec![];
         for c in self.content {
             content.push(c);
         }
