@@ -318,6 +318,15 @@ pub struct MessageParam {
     pub content: Vec<ContentBlock>,
 }
 
+impl From<Message> for MessageParam {
+    fn from(value: Message) -> Self {
+        MessageParam {
+            content: value.content,
+            role: value.role,
+        }
+    }
+}
+
 /// Complete message response
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Message {
@@ -328,19 +337,6 @@ pub struct Message {
     pub stop_reason: Option<StopReason>,
     pub stop_sequence: Option<String>,
     pub usage: Usage,
-}
-
-impl Into<MessageParam> for Message {
-    fn into(self) -> MessageParam {
-        let mut content = vec![];
-        for c in self.content {
-            content.push(c);
-        }
-        MessageParam {
-            content,
-            role: self.role,
-        }
-    }
 }
 
 /// System message

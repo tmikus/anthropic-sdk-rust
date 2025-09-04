@@ -383,6 +383,17 @@ See [TESTING.md](TESTING.md) for detailed testing guidelines and patterns.
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
+### Development Setup
+
+After cloning the repository, set up your development environment:
+
+```bash
+# Install git hooks for automatic code quality checks
+./register-hooks.sh
+```
+
+This will install pre-commit hooks that run formatting, linting, and tests automatically before each commit.
+
 When contributing:
 - Add unit tests for new functionality (must be Miri-compatible)
 - Add integration tests for network-dependent features
