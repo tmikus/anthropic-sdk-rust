@@ -38,15 +38,15 @@ use crate::{
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     // Create a client with default configuration
 ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-///     
+///
 ///     // Send a simple message
 ///     let request = client.chat_builder()
 ///         .user_message(ContentBlock::text("Hello, Claude!"))
 ///         .build();
-///     
+///
 ///     let response = client.execute_chat(request).await?;
 ///     println!("Response: {:?}", response);
-///     
+///
 ///     Ok(())
 /// }
 /// ```
@@ -65,7 +65,7 @@ use crate::{
 ///         .max_tokens(2000)
 ///         .timeout(Duration::from_secs(30))
 ///         .build()?;
-///     
+///
 ///     // Use the configured client...
 ///     Ok(())
 /// }
@@ -80,13 +80,13 @@ use crate::{
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-///     
+///
 ///     let request = client.chat_builder()
 ///         .user_message(ContentBlock::text("Tell me a story"))
 ///         .build();
-///     
+///
 ///     let mut stream = client.stream_chat(request).await?;
-///     
+///
 ///     while let Some(event) = stream.next().await {
 ///         match event? {
 ///             StreamEvent::ContentBlockDelta { delta, .. } => {
@@ -95,7 +95,7 @@ use crate::{
 ///             _ => {}
 ///         }
 ///     }
-///     
+///
 ///     Ok(())
 /// }
 /// ```
@@ -804,7 +804,7 @@ impl Client {
     ///         .max_tokens(2000)
     ///         .timeout(Duration::from_secs(30))
     ///         .build()?;
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -838,7 +838,7 @@ impl Client {
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     // Requires ANTHROPIC_API_KEY environment variable
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -883,19 +883,19 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .user_message(ContentBlock::text("What is the capital of France?"))
     ///         .build();
-    ///     
+    ///
     ///     let response = client.execute_chat(request).await?;
-    ///     
+    ///
     ///     for content in response.content {
     ///         if let ContentBlock::Text { text, .. } = content {
     ///             println!("Claude: {}", text);
     ///         }
     ///     }
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -923,19 +923,19 @@ impl Client {
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     // Client configured with Sonnet
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .user_message(ContentBlock::text("Quick question: what's 2+2?"))
     ///         .build();
-    ///     
+    ///
     ///     // Use faster Haiku model for this simple request
     ///     let response = client.execute_chat_with_model(
     ///         Model::Claude3Haiku20240307,
     ///         request
     ///     ).await?;
-    ///     
+    ///
     ///     println!("Used model: {:?}", response.model);
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -966,18 +966,18 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .user_message(ContentBlock::text("This might take a while..."))
     ///         .build();
-    ///     
+    ///
     ///     // Use longer timeout for this specific request
     ///     let response = client.execute_chat_with_options(
     ///         Model::Claude35Sonnet20241022,
     ///         request,
     ///         Some(Duration::from_secs(120))
     ///     ).await?;
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1021,17 +1021,17 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .user_message(ContentBlock::text("Quick question"))
     ///         .build();
-    ///     
+    ///
     ///     // Use shorter timeout for this quick request
     ///     let response = client.execute_chat_with_timeout(
     ///         request,
     ///         Duration::from_secs(10)
     ///     ).await?;
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1068,13 +1068,13 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .user_message(ContentBlock::text("Write a short story"))
     ///         .build();
-    ///     
+    ///
     ///     let mut stream = client.stream_chat(request).await?;
-    ///     
+    ///
     ///     while let Some(event) = stream.next().await {
     ///         match event? {
     ///             StreamEvent::ContentBlockDelta { delta, .. } => {
@@ -1086,7 +1086,7 @@ impl Client {
     ///             _ => {}
     ///         }
     ///     }
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1114,19 +1114,19 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .user_message(ContentBlock::text("Quick response needed"))
     ///         .build();
-    ///     
+    ///
     ///     // Use Haiku for faster streaming
     ///     let mut stream = client.stream_chat_with_model(
     ///         Model::Claude3Haiku20240307,
     ///         request
     ///     ).await?;
-    ///     
+    ///
     ///     // Process stream events...
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1158,20 +1158,20 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .user_message(ContentBlock::text("Generate a long story"))
     ///         .build();
-    ///     
+    ///
     ///     // Use longer timeout for streaming long content
     ///     let mut stream = client.stream_chat_with_options(
     ///         Model::Claude35Sonnet20241022,
     ///         request,
     ///         Some(Duration::from_secs(300))
     ///     ).await?;
-    ///     
+    ///
     ///     // Process stream events...
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1212,19 +1212,19 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .user_message(ContentBlock::text("Quick question"))
     ///         .build();
-    ///     
+    ///
     ///     // Use shorter timeout for quick streaming
     ///     let mut stream = client.stream_chat_with_timeout(
     ///         request,
     ///         Duration::from_secs(15)
     ///     ).await?;
-    ///     
+    ///
     ///     // Process stream events...
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1258,7 +1258,7 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = CountTokensRequest {
     ///         messages: vec![
     ///             anthropic_rust::types::MessageParam {
@@ -1269,10 +1269,10 @@ impl Client {
     ///         system: None,
     ///         tools: None,
     ///     };
-    ///     
+    ///
     ///     let token_count = client.count_tokens(request).await?;
     ///     println!("Input tokens: {}", token_count.input_tokens);
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1306,7 +1306,7 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     let request = client.chat_builder()
     ///         .system("You are a helpful assistant.")
     ///         .user_message(ContentBlock::text("Hello!"))
@@ -1314,9 +1314,9 @@ impl Client {
     ///         .user_message(ContentBlock::text("What's the weather like?"))
     ///         .temperature(0.7)
     ///         .build();
-    ///     
+    ///
     ///     let response = client.execute_chat(request).await?;
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1336,9 +1336,9 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     println!("Default model: {:?}", client.default_model());
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -1359,9 +1359,9 @@ impl Client {
     /// #[tokio::main]
     /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let client = Client::new(Model::Claude35Sonnet20241022)?;
-    ///     
+    ///
     ///     println!("Default max tokens: {}", client.default_max_tokens());
-    ///     
+    ///
     ///     Ok(())
     /// }
     /// ```
